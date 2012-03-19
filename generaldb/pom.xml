@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>eu.earthobservatory</groupId>
 		<artifactId>strabon</artifactId>
-		<version>3.1.6-SNAPSHOT</version>
+		<version>3.1.8-SNAPSHOT</version>
 	</parent>
   
 	<groupId>org.openrdf.sesame</groupId>
@@ -14,7 +14,7 @@
 	<name>OpenRDF Sesame: GeneralDBStore </name>
 	<description>GeneralDB Store Support</description>
 	<packaging>jar</packaging>
-	<version>3.1.6-SNAPSHOT</version>
+	<version>3.1.8-SNAPSHOT</version>
   
 	<url>http://maven.apache.org</url>
   
@@ -80,27 +80,20 @@
 		</dependency>
 
 		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-		</dependency>
-
-		<dependency>
 			<groupId>postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<scope>provided</scope>
 		</dependency>
  		
-	    <dependency>
-	      <groupId>junit</groupId>
-	      <artifactId>junit</artifactId>
-	      <version>4.7</version>
-	      <scope>test</scope>
-	    </dependency>
+                <dependency>
+                        <groupId>junit</groupId>
+                        <artifactId>junit</artifactId>
+                        <scope>test</scope>
+                </dependency>
 	    
-	    <dependency>
-		  <groupId>net.sf</groupId>
-		  <artifactId>log4jdbc4</artifactId>
-		  <version>1.2</version>
+		<dependency>
+			<groupId>net.sf</groupId>
+			<artifactId>log4jdbc4</artifactId>
 		</dependency>
 	    
 	</dependencies>
