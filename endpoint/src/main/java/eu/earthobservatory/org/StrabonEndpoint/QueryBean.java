@@ -153,7 +153,7 @@ public class QueryBean extends HttpServlet {
 
 		} else if (reqFormat.equalsIgnoreCase("KML file")) {
 			response.setContentType("application/vnd.google-earth.kml+xml; charset=UTF-8");
-		    response.setHeader("Content-Disposition","attachment;filename=pico.kml");
+		    response.setHeader("Content-Disposition","attachment;filename=doc.kml");
 			hive.setFormat(Strabon.FORMAT_KML);
 			
 		} else if (reqFormat.equalsIgnoreCase("KML")) {
@@ -162,7 +162,7 @@ public class QueryBean extends HttpServlet {
 			
 		} else if (reqFormat.equalsIgnoreCase("KMZ file")) {
 			response.setContentType("application/vnd.google-earth.kmz; charset=UTF-8");
-			response.setHeader("Content-Disposition","attachment;filename=pico.kmz");
+			response.setHeader("Content-Disposition","attachment;filename=doc.kmz");
 			hive.setFormat(Strabon.FORMAT_KMZ);
 			
 		} else if (reqFormat.equalsIgnoreCase("KMZ")) {
@@ -539,6 +539,7 @@ public class QueryBean extends HttpServlet {
 		out.println("<td width=\"90\" valign=\"top\" bgcolor=\"#dfe8f0\"> ");
 		out.println("<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"165\" id=\"navigation\"> ");
 		out.println("<tr><td width=\"90\" class=\"style4\"><a href=\"Query\" class=\"navText\">Query</a></td></tr> ");
+                out.println("<tr><td width=\"90\" class=\"style4\"><a href=\"Describe\" class=\"navText\">Describe</a></td></tr> ");
 	}
 
 	protected static void appendHTML1b(PrintWriter out) {	
