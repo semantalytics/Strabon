@@ -42,6 +42,7 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSqlDisjoint;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlEq;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlEqualsSpatial;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoArea;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoAsGML;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoAsText;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoBoundary;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoBuffer;
@@ -59,11 +60,14 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSymDifference;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoTransform;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoUnion;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlInside;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlIntersects;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlIsNull;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlLeft;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlLike;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlLowerCase;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlMathExpr;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlMbbEquals;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlMbbIntersects;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlNot;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlOr;
@@ -76,7 +80,6 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSqlTouch;
 import org.openrdf.sail.generaldb.algebra.GeneralDBStringValue;
 import org.openrdf.sail.generaldb.algebra.GeneralDBTrueValue;
 import org.openrdf.sail.generaldb.algebra.GeneralDBURIColumn;
-import org.openrdf.sail.generaldb.algebra.GeneralDBUnionItem;
 import org.openrdf.sail.generaldb.algebra.base.BinaryGeneralDBOperator;
 import org.openrdf.sail.generaldb.algebra.base.GeneralDBFromItem;
 import org.openrdf.sail.generaldb.algebra.base.GeneralDBSqlConstant;
@@ -114,7 +117,7 @@ import org.openrdf.sail.rdbms.exceptions.UnsupportedRdbmsOperatorException;
 /**
  * Constructs an SQL query from {@link GeneralDBSqlExpr}s and {@link GeneralDBFromItem}s.
  * 
- * @author James Leigh
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
  * 
  */
 public abstract class GeneralDBQueryBuilder {
@@ -146,19 +149,17 @@ public abstract class GeneralDBQueryBuilder {
 	}
 
 	public GeneralDBQueryBuilder filter(GeneralDBColumnVar var, Value val)
-			throws RdbmsException
-			{
+	throws RdbmsException
+	{
 		String alias = var.getAlias();
 		String column = var.getColumn();
 		query.filter().and().columnEquals(alias, column, vf.getInternalId(val));
 		return this;
-			}
+	}
 
-	public void from(GeneralDBFromItem from)
-			throws RdbmsException, UnsupportedRdbmsOperatorException
-			{
+	public void from(GeneralDBFromItem from) throws RdbmsException, UnsupportedRdbmsOperatorException {
 		from(query, from);
-			}
+	}
 
 	public List<?> getParameters() {
 		return query.findParameters(new ArrayList<Object>());
@@ -173,22 +174,22 @@ public abstract class GeneralDBQueryBuilder {
 	}
 
 	public void orderBy(GeneralDBSqlExpr expr, boolean isAscending)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		GeneralDBSqlExprBuilder orderBy = query.orderBy();
 		dispatch(expr, orderBy);
 		if (!isAscending) {
 			orderBy.append(" DESC");
 		}
-			}
+	}
 
 	public GeneralDBQueryBuilder select(GeneralDBSqlExpr expr)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		dispatch(expr, query.select());
 
 		return this;
-			}
+	}
 
 	@Override
 	public String toString() {
@@ -345,8 +346,8 @@ public abstract class GeneralDBQueryBuilder {
 			}	
 
 	protected void append(GeneralDBSqlCase expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		GeneralDBSqlCaseBuilder caseExpr = filter.caseBegin();
 		for (GeneralDBSqlCase.Entry e : expr.getEntries()) {
 			caseExpr.when();
@@ -355,68 +356,68 @@ public abstract class GeneralDBQueryBuilder {
 			dispatch(e.getResult(), filter);
 		}
 		caseExpr.end();
-			}
+	}
 
 	protected void append(GeneralDBSqlCast expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		GeneralDBSqlCastBuilder cast = filter.cast(expr.getType());
 		dispatch(expr.getArg(), (GeneralDBSqlExprBuilder) cast);
 		cast.close();
-			}
+	}
 
 	protected void append(GeneralDBSqlCompare expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		dispatch(expr.getLeftArg(), filter);
 		filter.appendOperator(expr.getOperator());
 		dispatch(expr.getRightArg(), filter);
-			}
+	}
 
 	protected void append(GeneralDBSqlConcat expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		GeneralDBSqlBracketBuilder open = filter.open();
 		dispatch(expr.getLeftArg(), (GeneralDBSqlExprBuilder) open);
 		open.concat();
 		dispatch(expr.getRightArg(), (GeneralDBSqlExprBuilder) open);
 		open.close();
-			}
+	}
 
 	protected void append(GeneralDBSqlEq expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		dispatch(expr.getLeftArg(), filter);
 		filter.eq();
 		dispatch(expr.getRightArg(), filter);
-			}
+	}
 
 	protected abstract void append(GeneralDBSqlIsNull expr, GeneralDBSqlExprBuilder filter)
 			throws UnsupportedRdbmsOperatorException;
 
 	protected void append(GeneralDBSqlLike expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		dispatch(expr.getLeftArg(), filter);
 		filter.like();
 		dispatch(expr.getRightArg(), filter);
-			}
+	}
 
 	protected void append(GeneralDBSqlLowerCase expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		GeneralDBSqlBracketBuilder lower = filter.lowerCase();
 		dispatch(expr.getArg(), (GeneralDBSqlExprBuilder) lower);
 		lower.close();
-			}
+	}
 
 	protected void append(GeneralDBSqlMathExpr expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		dispatch(expr.getLeftArg(), filter);
 		filter.math(expr.getOperator());
 		dispatch(expr.getRightArg(), filter);
-			}
+	}
 
 	protected abstract void append(GeneralDBSqlNot expr, GeneralDBSqlExprBuilder filter)
 			throws UnsupportedRdbmsOperatorException;
@@ -424,18 +425,18 @@ public abstract class GeneralDBQueryBuilder {
 	protected abstract void append(GeneralDBSqlNull expr, GeneralDBSqlExprBuilder filter);
 
 	protected void append(GeneralDBSqlOr expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		GeneralDBSqlBracketBuilder open = filter.open();
 		dispatch(expr.getLeftArg(), (GeneralDBSqlExprBuilder) open);
 		open.or();
 		dispatch(expr.getRightArg(), (GeneralDBSqlExprBuilder) open);
 		open.close();
-			}
+	}
 
 	protected void append(GeneralDBSqlRegex expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		GeneralDBSqlRegexBuilder regex = filter.regex();
 		dispatch(expr.getArg(), regex.value());
 		dispatch(expr.getPatternArg(), regex.pattern());
@@ -444,11 +445,11 @@ public abstract class GeneralDBQueryBuilder {
 			dispatch(flags, regex.flags());
 		}
 		regex.close();
-			}
+	}
 
 	protected void append(GeneralDBSqlShift expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		GeneralDBSqlBracketBuilder mod = filter.mod(expr.getRange());
 		GeneralDBSqlBracketBuilder open = mod.open();
 		dispatch(expr.getArg(), (GeneralDBSqlExprBuilder) open);
@@ -456,7 +457,7 @@ public abstract class GeneralDBQueryBuilder {
 		open.close();
 		mod.plus(expr.getRange());
 		mod.close();
-			}
+	}
 
 	protected void append(GeneralDBStringValue expr, GeneralDBSqlExprBuilder filter) {
 		filter.varchar(expr.getValue());
@@ -473,8 +474,8 @@ public abstract class GeneralDBQueryBuilder {
 	}
 
 	protected void dispatch(GeneralDBSqlExpr expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		if (expr instanceof GeneralDBValueColumnBase) {
 			dispatchValueColumnBase((GeneralDBValueColumnBase)expr, filter);
 		}
@@ -497,11 +498,11 @@ public abstract class GeneralDBQueryBuilder {
 		else {
 			dispatchOther(expr, filter);
 		}
-			}
+	}
 
 	protected void dispatchBinarySqlOperator(BinaryGeneralDBOperator expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
+	throws UnsupportedRdbmsOperatorException
+	{
 		if (expr instanceof GeneralDBSqlAnd) {
 			append((GeneralDBSqlAnd)expr, filter);
 		}
@@ -530,9 +531,12 @@ public abstract class GeneralDBQueryBuilder {
 		 * my additions
 		 * FIXME
 		 */
-		//Relationships - all 9 boolean of them - stSPARQL++
+		//Relationships - boolean - stSPARQL
 		else if (expr instanceof GeneralDBSqlAnyInteract) {
 			append((GeneralDBSqlAnyInteract)expr, filter);
+		}
+		else if (expr instanceof GeneralDBSqlIntersects) {
+			append((GeneralDBSqlIntersects)expr, filter);
 		}
 		else if (expr instanceof GeneralDBSqlContains) {
 			append((GeneralDBSqlContains)expr, filter);
@@ -569,6 +573,12 @@ public abstract class GeneralDBQueryBuilder {
 		}
 		else if (expr instanceof GeneralDBSqlBelow) {
 			append((GeneralDBSqlBelow)expr, filter);
+		}
+		else if (expr instanceof GeneralDBSqlMbbIntersects) {
+			append((GeneralDBSqlMbbIntersects)expr, filter);
+		}
+		else if (expr instanceof GeneralDBSqlMbbEquals) {
+			append((GeneralDBSqlMbbEquals)expr, filter);
 		}
 		//GeoSPARQL
 		//Simple Features
@@ -676,7 +686,7 @@ public abstract class GeneralDBQueryBuilder {
 		else {
 			throw unsupported(expr);
 		}
-			}
+	}
 
 	protected void dispatchTripleSqlOperator(TripleGeneralDBOperator expr, GeneralDBSqlExprBuilder filter)
 			throws UnsupportedRdbmsOperatorException
@@ -773,6 +783,9 @@ public abstract class GeneralDBQueryBuilder {
 		}
 		else if (expr instanceof GeneralDBSqlGeoAsText) {
 			append((GeneralDBSqlGeoAsText)expr, filter);
+		}
+		else if (expr instanceof GeneralDBSqlGeoAsGML) {
+			append((GeneralDBSqlGeoAsGML)expr, filter);
 		}
 		else if (expr instanceof GeneralDBSqlGeoSrid) {
 			append((GeneralDBSqlGeoSrid)expr, filter);
@@ -930,6 +943,9 @@ public abstract class GeneralDBQueryBuilder {
 	//Spatial Relationship Functions
 	protected abstract void append(GeneralDBSqlAnyInteract expr, GeneralDBSqlExprBuilder filter)
 			throws UnsupportedRdbmsOperatorException;
+	
+	protected abstract void append(GeneralDBSqlIntersects expr, GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException;
 
 	protected abstract void append(GeneralDBSqlContains expr, GeneralDBSqlExprBuilder filter)
 			throws UnsupportedRdbmsOperatorException;
@@ -968,6 +984,10 @@ public abstract class GeneralDBQueryBuilder {
 			throws UnsupportedRdbmsOperatorException;
 
 	protected abstract void append(GeneralDBSqlBelow expr, GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException;
+	protected abstract void append(GeneralDBSqlMbbIntersects expr, GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException;
+	protected abstract void append(GeneralDBSqlMbbEquals expr, GeneralDBSqlExprBuilder filter)
 			throws UnsupportedRdbmsOperatorException;
 
 	//GeoSPARQL - Spatial Relationship Functions 
@@ -1091,6 +1111,9 @@ public abstract class GeneralDBQueryBuilder {
 	protected abstract void append(GeneralDBSqlGeoAsText expr, GeneralDBSqlExprBuilder filter)
 			throws UnsupportedRdbmsOperatorException;
 
+	protected abstract void append(GeneralDBSqlGeoAsGML expr, GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException;
+	
 	protected abstract void append(GeneralDBSqlGeoSrid expr, GeneralDBSqlExprBuilder filter)
 			throws UnsupportedRdbmsOperatorException;
 

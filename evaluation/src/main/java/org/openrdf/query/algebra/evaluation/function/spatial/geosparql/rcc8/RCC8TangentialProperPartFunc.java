@@ -5,16 +5,17 @@
  */
 package org.openrdf.query.algebra.evaluation.function.spatial.geosparql.rcc8;
 
-import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
+import org.openrdf.query.algebra.evaluation.function.spatial.GeoConstants;
 import org.openrdf.query.algebra.evaluation.function.spatial.geosparql.GeoSparqlRelation;
-import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.EqualsFunc;
 
-
+/**
+ * 
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
+ */
 public class RCC8TangentialProperPartFunc extends GeoSparqlRelation {
 
 	@Override
 	public String getURI() {
-		return StrabonPolyhedron.rccTangentialProperPart;
-		}
-
+		return GeoConstants.rccTangentialProperPart;
+	}
 }

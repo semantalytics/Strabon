@@ -39,10 +39,9 @@ import org.openrdf.query.algebra.helpers.QueryModelVisitorBase;
 import org.openrdf.query.impl.EmptyBindingSet;
 
 /**
- * A query optimizer that optimizes constant value expressions.
+ * A query optimizer that optimizes constant value expressions for stSPARQL.
  * 
- * @author James Leigh
- * @author Arjohn Kampman
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
  */
 public class stSPARQLConstantOptimizer implements QueryOptimizer {
 
@@ -95,7 +94,7 @@ public class stSPARQLConstantOptimizer implements QueryOptimizer {
 			}
 			catch (ValueExprEvaluationException e) {
 				// TODO: incompatible values types(?), remove the affected part of the query tree
-				logger.debug("Failed to evaluate BinaryValueOperator with two constant arguments", e);
+				logger.error("Failed to evaluate BinaryValueOperator with two constant arguments", e);
 			}
 			catch (QueryEvaluationException e) {
 				logger.error("Query evaluation exception caught", e);
@@ -133,7 +132,7 @@ public class stSPARQLConstantOptimizer implements QueryOptimizer {
 			}
 			catch (ValueExprEvaluationException e) {
 				// TODO: incompatible values types(?), remove the affected part of the query tree
-				logger.debug("Failed to evaluate BinaryValueOperator with two constant arguments", e);
+				logger.error("Failed to evaluate BinaryValueOperator with two constant arguments", e);
 			}
 			catch (QueryEvaluationException e) {
 				logger.error("Query evaluation exception caught", e);
@@ -152,7 +151,7 @@ public class stSPARQLConstantOptimizer implements QueryOptimizer {
 				}
 				catch (ValueExprEvaluationException e) {
 					// TODO: incompatible values types(?), remove the affected part of the query tree
-					logger.debug("Failed to evaluate BinaryValueOperator with two constant arguments", e);
+					logger.error("Failed to evaluate BinaryValueOperator with two constant arguments", e);
 				}
 				catch (QueryEvaluationException e) {
 					logger.error("Query evaluation exception caught", e);
@@ -172,7 +171,7 @@ public class stSPARQLConstantOptimizer implements QueryOptimizer {
 				}
 				catch (ValueExprEvaluationException e) {
 					// TODO: incompatible values types(?), remove the affected part of the query tree
-					logger.debug("Failed to evaluate UnaryValueOperator with a constant argument", e);
+					logger.error("Failed to evaluate UnaryValueOperator with a constant argument", e);
 				}
 				catch (QueryEvaluationException e) {
 					logger.error("Query evaluation exception caught", e);
@@ -206,7 +205,7 @@ public class stSPARQLConstantOptimizer implements QueryOptimizer {
 				}
 				catch (ValueExprEvaluationException e) {
 					// TODO: incompatible values types(?), remove the affected part of the query tree
-					logger.debug("Failed to evaluate BinaryValueOperator with two constant arguments", e);
+					logger.error("Failed to evaluate BinaryValueOperator with two constant arguments", e);
 				}
 				catch (QueryEvaluationException e) {
 					logger.error("Query evaluation exception caught", e);

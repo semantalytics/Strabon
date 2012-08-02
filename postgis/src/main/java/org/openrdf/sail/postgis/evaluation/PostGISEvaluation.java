@@ -64,8 +64,7 @@ public class PostGISEvaluation extends GeneralDBEvaluation {
 					stmt.setObject(++p, o);
 				}
 				Collection<GeneralDBColumnVar> proj = qb.getProjections();
-				System.out.println("In PostGIS Evaluation, query is: ");
-				System.out.println(stmt.toString());
+//				System.out.println("In PostGIS Evaluation, query is: \n" + stmt);
 				GeneralDBBindingIteration result = new PostGISBindingIteration(stmt);
 				result.setProjections(proj);
 				result.setBindings(bindings);
@@ -74,9 +73,10 @@ public class PostGISEvaluation extends GeneralDBEvaluation {
 				//XXX addition
 				result.setGeoNames(this.geoNames);
 				result.setConstructIndexesAndNames(this.constructIndexesAndNames);
-				//
-		
 				
+				if (logger.isDebugEnabled()) {
+					logger.debug("In PostGIS Evaluation, query is: \n{}", stmt);
+				}
 				return result;
 			}
 			catch (SQLException e) {

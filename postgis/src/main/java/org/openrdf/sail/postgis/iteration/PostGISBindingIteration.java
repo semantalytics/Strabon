@@ -11,14 +11,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import org.openrdf.query.BindingSet;
-import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
+import org.openrdf.query.algebra.evaluation.function.spatial.GeoConstants;
 import org.openrdf.sail.generaldb.iteration.GeneralDBBindingIteration;
+import org.openrdf.sail.generaldb.model.GeneralDBPolyhedron;
 import org.openrdf.sail.rdbms.model.RdbmsValue;
 
 /**
  * Converts a {@link ResultSet} into a {@link BindingSet} in an iteration.
  * 
- * @author James Leigh
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
  * 
  */
 public class PostGISBindingIteration extends GeneralDBBindingIteration {
@@ -46,7 +47,7 @@ public class PostGISBindingIteration extends GeneralDBBindingIteration {
 		{
 			byte[] label = rs.getBytes(index + 1);
 			int srid = rs.getInt(index + 2);
-			return vf.getRdbmsPolyhedron(id, StrabonPolyhedron.ogcGeometry, label, srid);
+			return vf.getRdbmsPolyhedron(id, GeoConstants.WKT, label, srid);
 
 		}
 
@@ -57,12 +58,11 @@ public class PostGISBindingIteration extends GeneralDBBindingIteration {
 	@Override
 	protected RdbmsValue createBinaryGeoValueForSelectConstructs(ResultSet rs, int index)
 	throws SQLException
-	{
-
+	{		
 		//Case of spatial constructs
 		byte[] label = rs.getBytes(index + 1);
 		int srid = rs.getInt(index + 2);
-		return vf.getRdbmsPolyhedron(114, StrabonPolyhedron.ogcGeometry, label, srid);
+		return vf.getRdbmsPolyhedron(114, GeoConstants.WKT, label, srid);
 
 	}
 }

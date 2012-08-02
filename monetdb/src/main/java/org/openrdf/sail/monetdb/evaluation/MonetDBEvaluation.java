@@ -24,11 +24,12 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSelectQuery;
 import org.openrdf.sail.generaldb.evaluation.GeneralDBEvaluation;
 import org.openrdf.sail.generaldb.evaluation.GeneralDBQueryBuilderFactory;
 import org.openrdf.sail.generaldb.iteration.GeneralDBBindingIteration;
+import org.openrdf.sail.generaldb.schema.IdSequence;
 import org.openrdf.sail.monetdb.iteration.MonetDBBindingIteration;
 import org.openrdf.sail.rdbms.exceptions.RdbmsException;
 import org.openrdf.sail.rdbms.exceptions.RdbmsQueryEvaluationException;
 import org.openrdf.sail.rdbms.exceptions.UnsupportedRdbmsOperatorException;
-import org.openrdf.sail.generaldb.schema.IdSequence;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -40,6 +41,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MonetDBEvaluation extends GeneralDBEvaluation {
 
+	private static Logger logger = LoggerFactory.getLogger(org.openrdf.sail.monetdb.evaluation.MonetDBEvaluation.class);
 
 	public MonetDBEvaluation(GeneralDBQueryBuilderFactory factory, GeneralDBTripleRepository triples, Dataset dataset,
 			IdSequence ids)
@@ -68,6 +70,9 @@ public class MonetDBEvaluation extends GeneralDBEvaluation {
 					if ( o instanceof String ) {
 						stmt.setString(++p, (String)o); // TODO this must be extended with all types 
 					}
+					else if ( o instanceof Double ){
+						stmt.setDouble(++p, (Double)o); // TODO this must be extended with all types
+					}
 					else {
 						stmt.setObject(++p, o);
 					}
@@ -83,8 +88,10 @@ public class MonetDBEvaluation extends GeneralDBEvaluation {
 				result.setConstructIndexesAndNames(this.constructIndexesAndNames);
 				//
 
-				System.out.println("In MonetDB Evaluation, query is: ");
-				System.out.println(query); // In MonetDb this stmt.toString() returns just a reference
+				if (logger.isDebugEnabled()) {
+					logger.debug("In MonetDB Evaluation, query is: \n{}", query);
+				}
+				// In MonetDb this stmt.toString() returns just a reference
 				return result;
 			}
 			catch (SQLException e) {

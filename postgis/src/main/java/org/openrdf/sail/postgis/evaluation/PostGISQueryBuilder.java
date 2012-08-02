@@ -24,6 +24,7 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSqlCovers;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlDisjoint;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlEqualsSpatial;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoArea;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoAsGML;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoAsText;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoBoundary;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoBuffer;
@@ -41,9 +42,12 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSymDifference;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoTransform;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoUnion;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlInside;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlIntersects;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlIsNull;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlLeft;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlMathExpr;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlMbbEquals;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlMbbIntersects;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlNot;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlOverlap;
@@ -61,7 +65,6 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBUnionItem;
 import org.openrdf.sail.generaldb.algebra.base.BinaryGeneralDBOperator;
 import org.openrdf.sail.generaldb.algebra.base.GeneralDBFromItem;
 import org.openrdf.sail.generaldb.algebra.base.GeneralDBSqlExpr;
-import org.openrdf.sail.generaldb.algebra.base.GeneralDBValueColumnBase;
 import org.openrdf.sail.generaldb.algebra.base.TripleGeneralDBOperator;
 import org.openrdf.sail.generaldb.algebra.base.UnaryGeneralDBOperator;
 import org.openrdf.sail.generaldb.algebra.egenhofer.GeneralDBSqlEgenhofer_Contains;
@@ -99,10 +102,20 @@ import org.openrdf.sail.rdbms.exceptions.UnsupportedRdbmsOperatorException;
 /**
  * Constructs an SQL query from {@link GeneralDBSqlExpr}s and {@link GeneralDBFromItem}s.
  * 
- * @author James Leigh
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
  * 
  */
 public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
+
+	public static final String STRDFGEO_FIELD = "strdfgeo";
+	public static final String SRID_FIELD = "srid";
+	public static final String ST_TRANSFORM = "ST_Transform";
+	public static final String ST_ASBINARY = "ST_AsBinary";
+	/**
+	 * If (spatial) label column met is null, I must not try to retrieve its srid. 
+	 * Opting to ask for 'null' instead
+	 */
+	boolean nullLabel = false;
 
 	public enum SpatialOperandsPostGIS { anyInteract, equals, contains, inside, left, right, above, below; }
 	public enum SpatialFunctionsPostGIS 
@@ -116,6 +129,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 		ST_Intersects,
 		ST_Equals,
 		ST_Relate, 
+
 		//Spatial Constructs - Binary
 		ST_Union, 
 		ST_Intersection, 
@@ -123,21 +137,27 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 		ST_Buffer,
 		ST_Transform,
 		ST_SymDifference,
+
 		//Spatial Constructs - Unary
 		ST_Envelope,
 		ST_ConvexHull,
 		ST_Boundary,
+
 		//Spatial Metrics - Binary
 		ST_Distance,
+
 		//Spatial Metrics - Unary
 		ST_Area,
+
 		//Spatial Properties - All Unary
 		ST_Dimension,
 		ST_GeometryType,
+		ST_AsGML,
 		ST_AsText,
 		ST_SRID,
 		ST_IsEmpty,
 		ST_IsSimple,
+
 		//GeoSPARQL
 		//Simple Features
 		SF_Equals,
@@ -148,6 +168,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 		SF_Contains,
 		SF_Overlaps,
 		SF_Crosses,
+
 		//RCC8
 		RCC8_Eq,
 		RCC8_Dc,
@@ -157,6 +178,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 		RCC8_Tpp,
 		RCC8_Ntppi,
 		RCC8_Ntpp,
+
 		//Egenhofer
 		EH_Equals,
 		EH_Disjoint,
@@ -211,29 +233,30 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 	protected void append(GeneralDBLabelColumn var, GeneralDBSqlExprBuilder filter) {
 		if (var.getRdbmsVar().isResource()) {
 			filter.appendNull();
+			nullLabel = true;
 		}
 		else {
 			if(var.isSpatial())
 			{
-				filter.appendFunction("ST_AsBinary");
+				filter.appendFunction(ST_ASBINARY);
 				filter.openBracket();
 				//XXX SRID
-				filter.appendFunction("ST_Transform");
+				filter.appendFunction(ST_TRANSFORM);
 				filter.openBracket();
 				//
 				String alias = getLabelAlias(var.getRdbmsVar());
 
-				filter.column(alias, "strdfgeo");
+				filter.column(alias, STRDFGEO_FIELD);
 				//XXX SRID
 				filter.appendComma();
-				filter.column(alias, "srid");
+				filter.column(alias, SRID_FIELD);
 				filter.closeBracket();
 				//
 				filter.closeBracket();
 
 				//Adding srid field explicitly for my StrabonPolyhedron constructor later on!
 				filter.appendComma();
-				filter.column(alias, "srid");
+				filter.column(alias, SRID_FIELD);
 			}
 			else
 			{
@@ -301,7 +324,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 				&&!(expr instanceof GeneralDBSqlMathExpr)
 				&&!(expr instanceof GeneralDBSqlSpatialProperty))
 		{
-			query.select().appendFunction("ST_AsBinary");
+			query.select().appendFunction(ST_ASBINARY);
 		}
 		else
 		{
@@ -327,6 +350,13 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			{
 		appendGeneralDBSpatialFunctionBinary(expr, filter, SpatialFunctionsPostGIS.ST_Intersects);
 			}
+
+
+	@Override
+	protected void append(GeneralDBSqlIntersects expr, 	GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		appendGeneralDBSpatialFunctionBinary(expr, filter, SpatialFunctionsPostGIS.ST_Intersects);
+	}
 
 	@Override
 	protected void append(GeneralDBSqlContains expr, GeneralDBSqlExprBuilder filter)
@@ -418,6 +448,18 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			{
 		appendStSPARQLSpatialOperand(expr, filter, SpatialOperandsPostGIS.below);
 			}
+
+	@Override
+	protected void append(GeneralDBSqlMbbIntersects expr, GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		appendStSPARQLSpatialOperand(expr, filter, SpatialOperandsPostGIS.anyInteract);
+	}
+
+	@Override
+	protected void append(GeneralDBSqlMbbEquals expr, GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		appendStSPARQLSpatialOperand(expr, filter, SpatialOperandsPostGIS.equals);
+	}
 
 	//GeoSPARQL - Spatial Relationship Functions 
 	//Simple Features
@@ -693,6 +735,13 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 		appendGeneralDBSpatialFunctionUnary(expr, filter, SpatialFunctionsPostGIS.ST_AsText);
 			}
 
+	@Override
+	protected void append(GeneralDBSqlGeoAsGML expr, GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException
+			{
+		appendGeneralDBSpatialFunctionUnary(expr, filter, SpatialFunctionsPostGIS.ST_AsGML);
+			}
+
 	//	@Override
 	//	protected void append(GeneralDBSqlGeoSrid expr, GeneralDBSqlExprBuilder filter)
 	//	throws UnsupportedRdbmsOperatorException
@@ -759,8 +808,17 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 					if(tmp instanceof GeneralDBLabelColumn)
 					{
 						//Reached the innermost left var -> need to capture its SRID
-						String alias = getLabelAlias(((GeneralDBLabelColumn) tmp).getRdbmsVar());
-						alias=alias+".srid";
+						String alias;
+						if (((GeneralDBLabelColumn) tmp).getRdbmsVar().isResource()) {
+							//Predicates used in triple patterns non-existent in db
+							alias="NULL";
+						}
+						else
+						{
+							//Reached the innermost left var -> need to capture its SRID
+							alias = getLabelAlias(((GeneralDBLabelColumn) tmp).getRdbmsVar());
+							alias=alias+".srid";
+						}
 						sridExpr = alias;
 						filter.append(sridExpr);
 						filter.closeBracket();
@@ -981,14 +1039,14 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 
 			switch(operand)
 			{
-			case anyInteract: filter.anyInteract(); break;
-			case equals: filter.equals(); break;
-			case contains: filter.contains(); break;
-			case inside: filter.inside(); break;
-			case left: filter.left(); break;
-			case right: filter.right(); break;
-			case above: filter.above(); break;
-			case below: filter.below(); break;
+			case anyInteract: filter.intersectsMBB(); break;
+			case equals: filter.equalsMBB(); break;
+			case contains: filter.containsMBB(); break;
+			case inside: filter.insideMBB(); break;
+			case left: filter.leftMBB(); break;
+			case right: filter.rightMBB(); break;
+			case above: filter.aboveMBB(); break;
+			case below: filter.belowMBB(); break;
 			}
 
 			//			boolean check2a = expr.getRightArg().getClass().getCanonicalName().equals("org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull");
@@ -1025,7 +1083,6 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 		}
 		filter.closeBracket();
 	}
-	//	
 
 	//Used in all the generaldb stsparql boolean spatial functions of the form ST_Function(?GEO1,?GEO2) 
 	protected void appendTransformFunc(GeneralDBSqlGeoTransform expr, GeneralDBSqlExprBuilder filter)
@@ -1037,7 +1094,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 		String sridExpr = null;
 
 		filter.openBracket();
-		filter.appendFunction("ST_Transform");
+		filter.appendFunction(ST_TRANSFORM);
 		filter.openBracket();
 
 		boolean check1 = expr.getLeftArg().getClass().getCanonicalName().equals("org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull");
@@ -1073,11 +1130,18 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 					tmp = child;
 					if(tmp instanceof GeneralDBLabelColumn)
 					{
-						//Reached the innermost left var -> need to capture its SRID
-						String alias = getLabelAlias(((GeneralDBLabelColumn) tmp).getRdbmsVar());
-						alias=alias+".srid";
+						String alias;
+						if (((GeneralDBLabelColumn) tmp).getRdbmsVar().isResource()) {
+							//Predicates used in triple patterns non-existent in db
+							alias="NULL";
+						}
+						else
+						{
+							//Reached the innermost left var -> need to capture its SRID
+							alias = getLabelAlias(((GeneralDBLabelColumn) tmp).getRdbmsVar());
+							alias=alias+".srid";
+						}
 						sridExpr = alias;
-						//						((GeneralDBSqlSpatialConstructBinary)expr).setSrid(alias);
 						break;
 					}
 					else if (tmp instanceof GeneralDBStringValue) //Constant!!
@@ -1089,7 +1153,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 				}
 				if(sridNeeded)
 				{
-					filter.appendFunction("ST_Transform");
+					filter.appendFunction(ST_TRANSFORM);
 					filter.openBracket();
 				}
 			}
@@ -1115,7 +1179,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			{
 				appendMBB((GeneralDBLabelColumn)(expr.getLeftArg()),filter);
 			}
-			
+
 			//SRID Support
 			if(expr instanceof GeneralDBSqlSpatialConstructBinary && expr.getParentNode() == null)
 			{
@@ -1124,13 +1188,13 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 				filter.append(sridExpr);
 				filter.closeBracket();
 			}
-			
+
 			filter.appendComma();
 
 			if(expr.getRightArg() instanceof GeneralDBSqlCase) //case met in transform!
 			{
 				GeneralDBURIColumn plainURI = (GeneralDBURIColumn)((GeneralDBSqlCase)expr.getRightArg()).getEntries().get(0).getResult();
-				
+
 				//XXX This case would be met if we recovered the SRID URI from the db!!!
 				//Need to set sridExpr to the value of this new URI, otherwise the appended uri
 				//to the spatial object will be the wrong one!!!! (Seee following case)
@@ -1143,16 +1207,17 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			else if(expr.getRightArg() instanceof GeneralDBStringValue)
 			{
 				String unparsedSRID = ((GeneralDBStringValue)expr.getRightArg()).getValue();
-//				int srid = Integer.parseInt(unparsedSRID.substring(unparsedSRID.lastIndexOf('/')+1));
+				//				int srid = Integer.parseInt(unparsedSRID.substring(unparsedSRID.lastIndexOf('/')+1));
 				sridExpr = unparsedSRID.substring(unparsedSRID.lastIndexOf('/')+1);
 				filter.append(sridExpr);
 				filter.closeBracket();
 			}
 
-			
+
 		}
 		filter.closeBracket();
-		//In this case, SRID is the one that has been provided by the user!!
+		//In this case, SRID is the one that has been provided by the user!! 
+		//I am including this extra binding to be used in subsequent (Aggregate) steps
 		if(expr instanceof GeneralDBSqlSpatialConstructBinary && expr.getParentNode() == null)
 		{
 			filter.appendComma();
@@ -1210,10 +1275,18 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 					if(tmp instanceof GeneralDBLabelColumn)
 					{
 						//Reached the innermost left var -> need to capture its SRID
-						String alias = getLabelAlias(((GeneralDBLabelColumn) tmp).getRdbmsVar());
-						alias=alias+".srid";
+						String alias;
+						if (((GeneralDBLabelColumn) tmp).getRdbmsVar().isResource()) {
+							//Predicates used in triple patterns non-existent in db
+							alias="NULL";
+						}
+						else
+						{
+							//Reached the innermost left var -> need to capture its SRID
+							alias = getLabelAlias(((GeneralDBLabelColumn) tmp).getRdbmsVar());
+							alias=alias+".srid";
+						}
 						sridExpr = alias;
-						//						((GeneralDBSqlSpatialConstructBinary)expr).setSrid(alias);
 						break;
 					}
 					else if (tmp instanceof GeneralDBStringValue) //Constant!!
@@ -1225,7 +1298,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 				}
 				if(sridNeeded)
 				{
-					filter.appendFunction("ST_Transform");
+					filter.appendFunction(ST_TRANSFORM);
 					filter.openBracket();
 				}
 			}
@@ -1235,6 +1308,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 
 			switch(func)
 			{
+			//XXX Careful: ST_Transform support MISSING!!!
 			case ST_Difference: filter.appendFunction("ST_Difference"); break;
 			case ST_Intersection: filter.appendFunction("ST_Intersection"); break;
 			case ST_Union: filter.appendFunction("ST_Union"); break;
@@ -1406,9 +1480,17 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 					if(tmp instanceof GeneralDBLabelColumn)
 					{
 						//Reached the innermost left var -> need to capture its SRID
-						String alias = getLabelAlias(((GeneralDBLabelColumn) tmp).getRdbmsVar());
-						alias=alias+".srid";
-						//((GeneralDBSqlSpatialConstructUnary)expr).setSrid(alias);
+						String alias;
+						if (((GeneralDBLabelColumn) tmp).getRdbmsVar().isResource()) {
+							//Predicates used in triple patterns non-existent in db
+							alias="NULL";
+						}
+						else
+						{
+							//Reached the innermost left var -> need to capture its SRID
+							alias = getLabelAlias(((GeneralDBLabelColumn) tmp).getRdbmsVar());
+							alias=alias+".srid";
+						}
 						sridExpr = alias;
 						break;
 					}
@@ -1421,7 +1503,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 				}
 				if(sridNeeded)
 				{
-					filter.appendFunction("ST_Transform");
+					filter.appendFunction(ST_TRANSFORM);
 					filter.openBracket();
 				}
 			}
@@ -1436,6 +1518,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			case ST_Dimension: filter.appendFunction("ST_Dimension"); break;
 			case ST_GeometryType: filter.appendFunction("ST_GeometryType"); break;
 			case ST_AsText: filter.appendFunction("ST_AsText"); break;
+			case ST_AsGML: filter.appendFunction("ST_AsGML"); break;
 			case ST_SRID: filter.appendFunction("ST_SRID"); break;
 			case ST_IsEmpty: filter.appendFunction("ST_IsEmpty"); break;
 			case ST_IsSimple: filter.appendFunction("ST_IsSimple"); break;
@@ -1485,10 +1568,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			filter.appendComma();
 			filter.append(sridExpr);
 		}
-
 			}
-
-
 
 	//Used in all the generaldb boolean spatial functions of the form ST_Function(?GEO1,?GEO2) 
 	protected void appendGeneralDBSpatialFunctionTriple(TripleGeneralDBOperator expr, GeneralDBSqlExprBuilder filter, SpatialFunctionsPostGIS func)
@@ -1635,8 +1715,8 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			{
 		filter.openBracket();
 
-		boolean check1 = expr.getLeftArg().getClass().getCanonicalName().equals("org.openrdf.sail.monetdb.algebra.GeneralDBSqlNull");
-		boolean check2 = expr.getRightArg().getClass().getCanonicalName().equals("org.openrdf.sail.monetdb.algebra.GeneralDBSqlNull");
+		boolean check1 = expr.getLeftArg().getClass().getCanonicalName().equals("org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull");
+		boolean check2 = expr.getRightArg().getClass().getCanonicalName().equals("org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull");
 
 		if(check1)
 		{
@@ -1675,13 +1755,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 				appendMBB((GeneralDBLabelColumn)(expr.getLeftArg()),filter);
 			}
 			filter.appendComma();
-			//			boolean check2 = expr.getRightArg().getClass().getCanonicalName().equals("org.openrdf.sail.monetdb.algebra.GeneralDBSqlNull");
-			//			if(check2)
-			//			{
-			//				this.append((GeneralDBSqlNull)expr.getRightArg(), filter);
-			//			}
-			//			else
-			//			{
+
 			if(expr.getRightArg() instanceof GeneralDBStringValue)
 			{
 				appendWKT(expr.getRightArg(),filter);
@@ -1726,7 +1800,6 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 				appendMBB((GeneralDBLabelColumn)(expr.getRightArg()),filter);
 			}
 
-			//			}
 			//3rd arg
 			filter.appendComma();
 
@@ -1739,6 +1812,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			filter.append("'");
 
 			filter.closeBracket();
+
 		}
 
 		filter.closeBracket();
@@ -1749,7 +1823,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			throws UnsupportedRdbmsOperatorException
 			{
 		filter.openBracket();
-		boolean check1 = expr.getLeftArg().getClass().getCanonicalName().equals("org.openrdf.sail.monetdb.algebra.GeneralDBSqlNull");
+		boolean check1 = expr.getLeftArg().getClass().getCanonicalName().equals("org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull");
 		if(check1)
 		{
 			this.append((GeneralDBSqlNull)expr.getLeftArg(), filter);
@@ -2080,10 +2154,13 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 					filter.or();
 				}
 			}
-			//			filter.appendFunction("ST_Relate");
-			//			filter.openBracket();
-			//			
-			//			filter.closeBracket();
+
+			//Also need bounding box intersection query to enable the usage of the Gist R-tree index
+			if(func != SpatialFunctionsPostGIS.SF_Disjoint && func != SpatialFunctionsPostGIS.EH_Disjoint && func != SpatialFunctionsPostGIS.RCC8_Dc)
+			{
+				filter.and();
+				appendGeneralDBSpatialFunctionBinary(expr, filter,SpatialFunctionsPostGIS.ST_Intersects);
+			}
 		}
 		filter.closeBracket();
 			}
@@ -2096,8 +2173,8 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			throws UnsupportedRdbmsOperatorException
 			{
 		filter.openBracket();
-
-		boolean check1 = expr.getLeftArg().getClass().getCanonicalName().equals("org.openrdf.sail.monetdb.algebra.GeneralDBSqlNull");
+		System.out.println(expr.getLeftArg().getClass().getCanonicalName());
+		boolean check1 = expr.getLeftArg().getClass().getCanonicalName().equals("org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull");
 		if(check1)
 		{
 			this.append((GeneralDBSqlNull)expr.getLeftArg(), filter);
@@ -2131,7 +2208,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 				appendMBB((GeneralDBLabelColumn)(expr.getLeftArg()),filter);
 			}
 			filter.appendComma();
-			boolean check2 = expr.getRightArg().getClass().getCanonicalName().equals("org.openrdf.sail.monetdb.algebra.GeneralDBSqlNull");
+			boolean check2 = expr.getRightArg().getClass().getCanonicalName().equals("org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull");
 			if(check2)
 			{
 				this.append((GeneralDBSqlNull)expr.getRightArg(), filter);
@@ -2199,4 +2276,5 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 
 		filter.closeBracket();
 			}
+
 }

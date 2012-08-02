@@ -1,6 +1,10 @@
 package org.openrdf.query.algebra.evaluation.function.spatial;
 import java.util.ArrayList;
 
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.query.algebra.evaluation.util.JTSWrapper;
+
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.CoordinateSequence;
 import com.vividsolutions.jts.geom.Geometry;
@@ -15,189 +19,168 @@ import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.impl.CoordinateArraySequence;
 import com.vividsolutions.jts.io.ParseException;
-import com.vividsolutions.jts.io.WKBReader;
-import com.vividsolutions.jts.io.WKBWriter;
-import com.vividsolutions.jts.io.WKTReader;
-import com.vividsolutions.jts.io.WKTWriter;
 
-import org.geotools.geometry.jts.JTS;
-import org.geotools.referencing.CRS;
-import org.opengis.geometry.MismatchedDimensionException;
-import org.opengis.referencing.FactoryException;
-import org.opengis.referencing.NoSuchAuthorityCodeException;
-import org.opengis.referencing.crs.CoordinateReferenceSystem;
-import org.opengis.referencing.operation.MathTransform;
-import org.opengis.referencing.operation.TransformException;
-import org.openrdf.model.URI;
-import org.openrdf.model.Value; 
-
+/**
+ * A {@link StrabonPolyhedron} is a @{link Value} that is used to represent geometries.
+ * Therefore, a {@link StrabonPolyhedron} wraps around the construct of an RDF @{link Value}
+ * the notion of geometry. This geometry can be expressed in different kinds of
+ * representations, such as linear constraints over the reals with addition
+ * (Semi-linear point sets), Well-Known Text (WKT), or Geography Markup Language (GML).
+ * 
+ * The former kind of representation, i.e., Semi-linear point sets, was the first
+ * representation to be supported by StrabonPolyhedron and now has been deprecated and
+ * not supported any more. It can be enabled by setting the value for variable
+ * {@link #EnableConstraintRepresentation} to <tt>true</tt>. However, this is hardly 
+ * suggested and it is discouraged. 
+ * 
+ * The other two kinds of representation is WKT and GML which are representations
+ * standardized by the Open Geospatial Consortium (OGC). Both representations can be
+ * used to represent a geometry and they are enabled by default.
+ * 
+ * {@link StrabonPolyhedron} does not store a specific representation for a geometry. In
+ * contrast, it stores the plain geometry as a byte array using a {@link Geometry} object.
+ * However, {@link StrabonPolyhedron} offers constructors and methods for getting a
+ * {@link StrabonPolyhedron} instance through any kind of representation and of course
+ * getting a {@link StrabonPolyhedron} instance in a specific representation.
+ * 
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
+ * @author Kostis Kyzirakos <kk@di.uoa.gr>
+ *
+ */
 public class StrabonPolyhedron implements Value {
 
+	private static final long serialVersionUID = 894529468109904724L;
+	
 	public static String CACHEPATH = "";
 	public static String TABLE_COUNTS = "counts.bin";
 	public static String TABLE_SUBJ_OBJ_TYPES = "tableProperties.bin";
 	public static String TABLE_SHIFTING = "groupbys.bin";
 
-
 	public static final boolean EnableConstraintRepresentation = false;
-
-	public static final String stRDFSemiLinearPointset="http://strdf.di.uoa.gr/ontology#SemiLinearPointSet";
-	public static final String ogcGeometry="http://strdf.di.uoa.gr/ontology#WKT";
-	public static final String geof="http://www.opengis.net/def/queryLanguage/OGC-GeoSPARQL/1.0/function/";
-	//Extended functions
-	//Spatial Relationships
-	public static final String anyInteract="http://strdf.di.uoa.gr/ontology#anyInteract";
-	public static final String contains="http://strdf.di.uoa.gr/ontology#contains";
-	public static final String coveredBy="http://strdf.di.uoa.gr/ontology#coveredBy";
-	public static final String covers="http://strdf.di.uoa.gr/ontology#covers";
-	public static final String disjoint="http://strdf.di.uoa.gr/ontology#disjoint";
-	public static final String equals="http://strdf.di.uoa.gr/ontology#equals";
-	public static final String inside="http://strdf.di.uoa.gr/ontology#inside";
-	public static final String overlap="http://strdf.di.uoa.gr/ontology#overlap";
-	public static final String touch="http://strdf.di.uoa.gr/ontology#touch";
-	public static final String relate="http://strdf.di.uoa.gr/ontology#relate";
-	public static final String left="http://strdf.di.uoa.gr/ontology#left";
-	public static final String right="http://strdf.di.uoa.gr/ontology#right";
-	public static final String above="http://strdf.di.uoa.gr/ontology#above";
-	public static final String below="http://strdf.di.uoa.gr/ontology#below";
-	//Spatial Constructs
-	public static final String union="http://strdf.di.uoa.gr/ontology#union";
-	public static final String buffer="http://strdf.di.uoa.gr/ontology#buffer";
-	public static final String envelope="http://strdf.di.uoa.gr/ontology#envelope";
-	public static final String convexHull="http://strdf.di.uoa.gr/ontology#convexHull";
-	public static final String boundary="http://strdf.di.uoa.gr/ontology#boundary";
-	public static final String intersection="http://strdf.di.uoa.gr/ontology#intersection";
-	public static final String difference="http://strdf.di.uoa.gr/ontology#difference";
-	public static final String symDifference="http://strdf.di.uoa.gr/ontology#symDifference";
-	public static final String transform="http://strdf.di.uoa.gr/ontology#transform";
-	//Spatial Metric Functions
-	public static final String distance="http://strdf.di.uoa.gr/ontology#distance";
-	public static final String area="http://strdf.di.uoa.gr/ontology#area";
-	//Spatial Properties
-	public static final String dimension="http://strdf.di.uoa.gr/ontology#dimension";
-	public static final String geometryType="http://strdf.di.uoa.gr/ontology#geometryType";
-	public static final String asText="http://strdf.di.uoa.gr/ontology#asText";
-	public static final String srid="http://strdf.di.uoa.gr/ontology#srid";
-	public static final Integer defaultSRID=4326; //default srid. 
-	public static final String isEmpty="http://strdf.di.uoa.gr/ontology#isEmpty";
-	public static final String isSimple="http://strdf.di.uoa.gr/ontology#isSimple";
-	//Spatial Aggregate Functions
-	public static final String extent="http://strdf.di.uoa.gr/ontology#extent";
-	////
-
-	//GEOSPARQL
-
-	//Non-topological
-	public static final String geoSparqlDistance = geof+"distance"; //3 arguments
-	public static final String geoSparqlBuffer = geof+"buffer"; //3 arguments
-	public static final String geoSparqlConvexHull = geof+"convexHull";
-	public static final String geoSparqlIntersection = geof+"intersection";
-	public static final String geoSparqlUnion = geof+"union";
-	public static final String geoSparqlDifference = geof+"difference";
-	public static final String geoSparqlSymmetricDifference = geof+"symmetricDifference";
-	public static final String geoSparqlEnvelope = geof+"envelope";
-	public static final String geoSparqlBoundary = geof+"boundary";
-
-	//Simple Features - 8 functions - all with 2 arguments + boolean
-	public static final String sfEquals = geof+"sf-equals";  
-	public static final String sfDisjoint = geof+"sf-disjoint";  
-	public static final String sfIntersects = geof+"sf-intersects";
-	public static final String sfTouches = geof+"sf-touches";
-	public static final String sfCrosses = geof+"sf-crosses";
-	public static final String sfWithin = geof+"sf-within";
-	public static final String sfContains = geof+"sf-contains";
-	public static final String sfOverlaps = geof+"sf-overlaps";
-
-	//Egenhofer - 8 functions - all with 2 arguments + boolean
-	public static final String ehEquals = geof+"eh-equals";  
-	public static final String ehDisjoint = geof+"eh-disjoint";  
-	public static final String ehMeet = geof+"eh-meet";
-	public static final String ehOverlap = geof+"eh-overlap";
-	public static final String ehCovers = geof+"eh-covers";
-	public static final String ehCoveredBy = geof+"eh-coveredBy";
-	public static final String ehInside = geof+"eh-inside";
-	public static final String ehContains = geof+"eh-contains";
-
-	//RCC8 - 8 functions - all with 2 arguments + boolean
-	public static final String rccEquals = geof+"rcc8-eq";  
-	public static final String rccDisconnected = geof+"rcc8-dc";  
-	public static final String rccExternallyConnected = geof+"rcc8-ec";
-	public static final String rccPartiallyOverlapping = geof+"rcc8-po";
-	public static final String rccTangentialProperPartInverse = geof+"rcc8-tppi";
-	public static final String rccTangentialProperPart = geof+"rcc8-tpp";
-	public static final String rccNonTangentialProperPart = geof+"rcc8-ntpp";
-	public static final String rccNonTangentialProperPartInverse = geof+"rcc8-ntppi";
-
-	public static final String geoSparqlRelate = geof+"relate";
 
 	private static int MAX_POINTS = Integer.MAX_VALUE;//40000;//Integer.MAX_VALUE;//10000;
 
+	/**
+	 * Get the Java Topology Suite wrapper instance.
+	 */
+	private static JTSWrapper jts = JTSWrapper.getInstance();
+	
+	/**
+	 * The underlying geometry
+	 */
 	private Geometry geometry;
 
+	/**
+	 * Creates a {@link StrabonPolyhedron} instance with an empty geometry.
+	 */
 	public StrabonPolyhedron() {
 		this.geometry = null;
 
 	}
-
-
-	public void setGeometry(Geometry geometry) {
-		this.geometry = geometry;
-	}
-
-
-
-	public static StrabonPolyhedron ConstructFromWKB(byte[] byteArray) throws Exception {
-		return new StrabonPolyhedron(new WKBReader().read(byteArray));
-	}
-
-	public static Geometry convertSRID(Geometry A, int sourceSRID, int targetSRID)
-	{
-
-		if(sourceSRID != targetSRID)
-		{
-			CoordinateReferenceSystem sourceCRS = null;
-			CoordinateReferenceSystem targetCRS = null;
-			
-			MathTransform transform;
-			try {
-				//EPSG supported currently - is there a way to be more general??
-				sourceCRS = CRS.decode("EPSG:"+sourceSRID);
-				targetCRS = CRS.decode("EPSG:"+targetSRID);
-				transform = CRS.findMathTransform(sourceCRS, targetCRS, true);
-
-				Geometry x = JTS.transform(A, transform);
-				x.setSRID(targetSRID);
-				return x;
-			} catch (FactoryException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (MismatchedDimensionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (TransformException e) {
-				System.out.println("Transformation is not possible!!");
-				e.printStackTrace();
-			} 
-		}
-		return A;
-	}
-
-	//public StrabonPolyhedron(int partitionAlgorithmIgnored, String constraints) throws Exception {
-	//	Polyhedron poly = new Polyhedron(constraints);
-	//	this.geometry = new WKTReader().read(poly.toWKT());
-	//}
-
-
-
+	
+	/**
+	 * Creates a {@link StrabonPolyhedron} instance with the given geometry.
+	 * 
+	 * @param geo
+	 * @throws Exception
+	 */
 	public StrabonPolyhedron(Geometry geo) throws Exception {
 		this.geometry = new StrabonPolyhedron(geo, 1).geometry;
 		this.geometry.setSRID(geo.getSRID());
 	}
+	
+	/**
+	 * Creates a {@link StrabonPolyhedron} instance with a geometry given
+	 * in the representation of the argument. The representation could be
+	 * either in WKT or in GML.
+	 * 
+	 * @param representation
+	 * @throws Exception
+	 */
+	public StrabonPolyhedron(String representation) throws IllegalArgumentException {
+		try {
+			// try first as WKT
+			geometry = jts.WKTread(representation);
+			
+		} catch (ParseException e) {
+			try {
+				// try as GML
+				geometry = jts.GMLread(representation);
+				
+			} catch (Exception e1) {
+				throw new IllegalArgumentException(e1);
+			}
+		}
+	}
 
+	/**
+	 * Creates a {@link StrabonPolyhedron} instance with a geometry represented 
+	 * by the given byte array.
+	 * 
+	 * @param byteArray
+	 * @throws ParseException
+	 */
+	public StrabonPolyhedron(byte[] byteArray) throws ParseException {
+		this.geometry = jts.WKBread(byteArray);
+	}
+
+	/**
+	 * Creates a {@link StrabonPolyhedron} instance with a geometry represented
+	 * by the given byte array and sets the SRID of the geometry to the given one.
+	 * 
+	 * @param byteArray
+	 * @param srid
+	 * @throws ParseException
+	 */
+	public StrabonPolyhedron(byte[] byteArray, int srid) throws ParseException {
+		this(byteArray);
+		this.geometry.setSRID(srid);
+	}
+	
+	/**
+	 * Returns the string representation of the geometry of this 
+	 * {@link StrabonPolyhedron} instance. The result of this method
+	 * is the same to the one of method {@link #toWKT()}.
+	 */
+	public String stringValue() {
+		return toWKT();
+	}
+
+	@Override
+	public boolean equals(Object other) {
+		if (this == other) {
+			return true;
+		}
+		
+		if(other instanceof StrabonPolyhedron) {
+			if (((StrabonPolyhedron) other).geometry.equals(this.getGeometry())) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	@Deprecated
+	public StrabonPolyhedron(String WKT, int algorithm) throws Exception {
+		if(WKT.contains("gml"))
+		{
+			Geometry geo = jts.GMLread(WKT);
+			this.geometry = new StrabonPolyhedron(geo).geometry;
+		}
+		else
+		{
+			Geometry geo = jts.WKTread(WKT);
+			this.geometry = new StrabonPolyhedron(geo, algorithm).geometry;
+		}
+	
+	}
+
+	@Deprecated
 	public StrabonPolyhedron(Geometry geo, int algorithm) throws Exception {
 		this.geometry = new StrabonPolyhedron(geo, algorithm, MAX_POINTS).geometry;
 	}
 
+	@SuppressWarnings("unused")
 	public StrabonPolyhedron(Geometry geo, int algorithm, int maxPoints) throws Exception {		
 		if (geo.isEmpty()) {
 			this.geometry = geo;
@@ -343,6 +326,74 @@ public class StrabonPolyhedron implements Value {
 		}
 	}
 
+	/**
+	 * Sets the geometry of this {@link StrabonPolyhedron} instance to
+	 * the given one.
+	 * 
+	 * @param geometry
+	 */
+	public void setGeometry(Geometry geometry) {
+		this.geometry = geometry;
+	}
+
+	/**
+	 * Returns the string representation of the geometry.
+	 */
+	public String toString() {
+		return geometry.toString();
+	}
+
+	/**
+	 * Returns the representation of the geometry in WKT (assumed 
+	 * as the default representation in {@link StrabonPolyhedron}).
+	 * 
+	 * @return
+	 */
+	public String toText() {
+		return geometry.toText();
+	}
+
+	/**
+	 * Return the geometry of {@link StrabonPolyhedron} in Well-Known
+	 * Binary (WKB).
+	 * 
+	 * This method is equivalent to {@link #toByteArray()}.
+	 * 
+	 * @return
+	 */
+	public byte[] toWKB() {
+		return jts.WKBwrite(this.geometry);		
+	}
+
+	/**
+	 * Return the geometry of {@link StrabonPolyhedron} as WKT.
+	 * 
+	 * @return
+	 */
+	public String toWKT() {
+		return jts.WKTwrite(this.geometry);		
+	}
+
+	/**
+	 * Return the geometry of {@link StrabonPolyhedron} as a byte array.
+	 * 
+	 * This method is equivalent to {@link #toWKB()}.
+	 * 
+	 * @return
+	 */
+	public byte[] toByteArray() {
+		return jts.WKBwrite(this.geometry);
+	}
+
+	/**
+	 * Returns the geometry of this {@link StrabonPolyhedron} instance.
+	 * 
+	 * @return
+	 */
+	public Geometry getGeometry() {
+		return this.geometry;
+	}
+	
 	public static StrabonPolyhedron ParseBigPolyhedron(Geometry polygon, int algorithm, boolean horizontal, int maxPoints) throws Exception {
 		assert (Polygon.class.isInstance(polygon) || (MultiPolygon.class.isInstance(polygon)));
 
@@ -417,6 +468,7 @@ public class StrabonPolyhedron implements Value {
 		}
 	}
 
+	@Deprecated
 	public StrabonPolyhedron(Polygon polygon, int algorithm, int maxPoints) throws Exception {
 		//		if (!polygon.isSimple())
 		//			throw new Exception(
@@ -484,32 +536,6 @@ public class StrabonPolyhedron implements Value {
 			c[distinctCoordinates-1][1] = coordinates[coordinates.length-1].y;
 		}
 
-		//System.out.println("--- Counter              = " + counter);
-		//System.out.println("---\n---\n---\n---\n---\n");
-
-		//		BufferedWriter bww = new BufferedWriter(new FileWriter(new File("/home/kkyzir/Desktop/Spatial data/ssg4env/geometries/gnuplot/cfunction.dat")));
-		//		BufferedWriter bw2 = new BufferedWriter(new FileWriter(new File("/home/kkyzir/Desktop/Spatial data/ssg4env/geometries/gnuplot/original.dat")));
-		//		bww.write("void make_polygon(Polygon_2& polygon) {");
-		//		for (int i = 0; i < coordinates.length - 1; i++) {
-		//			Coordinate coordinate = coordinates[i];
-		//			bww.write("\tpolygon.push_back(Point_2(");
-		//			bww.write(new Double(coordinate.x).toString());
-		//			bww.write(",");
-		//			bww.write(new Double(coordinate.y).toString());
-		//			bww.write("));\n");
-		//			
-		//			bw2.write(new Double(coordinate.x).toString());
-		//			bw2.write(" ");
-		//			bw2.write(new Double(coordinate.y).toString());
-		//			bw2.write("\n");
-		//		}
-		//		bww.write("}\n");
-		//		bww.flush();
-		//		bww.close();
-		//		
-		//		bw2.flush();
-		//		bw2.close();
-
 		double start = System.nanoTime();
 		//		double[][][] convexified = Polyhedron.ConvexifyPolygon(c, algorithm);
 		double[][][] convexified = new double[1][2][3];		
@@ -520,7 +546,6 @@ public class StrabonPolyhedron implements Value {
 
 		System.out.println("ConvexifyTime " + (System.nanoTime()-start));
 
-		int[] sizes = new int[255];
 		double min = Double.MAX_VALUE;
 		double max = Double.MIN_VALUE;
 
@@ -613,65 +638,7 @@ public class StrabonPolyhedron implements Value {
 		this.geometry = new MultiPolygon(collection, new GeometryFactory());
 		this.geometry.normalize();
 	}
-
-	public StrabonPolyhedron(Polygon polygon) throws Exception {
-		this.geometry = new StrabonPolyhedron(polygon, 1).geometry;
-	}
-
-	public StrabonPolyhedron(String geometry) throws Exception {
-		int geomSRID = 4326;
-		if(geometry.contains(";"))
-		{
-			int whereToCut = geometry.lastIndexOf('/');
-			geomSRID = Integer.parseInt(geometry.substring(whereToCut+1));
-			whereToCut = geometry.indexOf(';');
-			geometry.substring(0,whereToCut);
-		}
-		if (geometry.startsWith("POINT") || 
-				geometry.startsWith("LINESTRING") || 
-				geometry.startsWith("POLYGON") || 
-				geometry.startsWith("MULTIPOINT") || 
-				geometry.startsWith("MULTILINESTRING") || 
-				geometry.startsWith("MULTIPOLYGON") || 
-				geometry.startsWith("GEOMETRYCOLLECTION")) {
-			Geometry geo = new WKTReader().read(geometry);
-			this.geometry = new StrabonPolyhedron(geo).geometry;
-			//Default 
-			this.geometry.setSRID(geomSRID);
-		} else {
-			//Polyhedron polyhedron = new Polyhedron(geometry);
-			//String polyhedronWKT = polyhedron.toWKT();
-			//WKTReader reader = new WKTReader();
-			//Geometry geo = reader.read(polyhedronWKT);
-			//
-			//if (!EnableConstraintRepresentation) {
-			//	this.geometry = geo.union(geo);
-			//}
-		}
-	}
-
-	public StrabonPolyhedron(String WKT, int algorithm) throws Exception {
-		Geometry geo = new WKTReader().read(WKT);
-		this.geometry = new StrabonPolyhedron(geo, algorithm).geometry;
-	}
-
-	public StrabonPolyhedron(String WKT, int algorithm, int maxPoints) throws Exception {
-		Geometry geo = new WKTReader().read(WKT);
-		this.geometry = new StrabonPolyhedron(geo, algorithm).geometry;
-	}
-
-	public StrabonPolyhedron(byte[] byteArray) throws ParseException {
-
-		this.geometry = new WKBReader().read(byteArray);
-		//		System.out.println(geometry.toString()+" "+geometry.getSRID());
-	}
-
-	public StrabonPolyhedron(byte[] byteArray, int srid) throws ParseException {
-
-		this.geometry = new WKBReader().read(byteArray);
-		this.geometry.setSRID(srid);
-	}
-
+	
 	public String toConstraints() //throws ConversionException 
 	{
 		if (this.geometry.isEmpty())
@@ -686,36 +653,12 @@ public class StrabonPolyhedron implements Value {
 		return "";
 	}
 
-	public String toString() {
-		return this.geometry.toString();
-	}
-
-	public String toText() {
-		return this.geometry.toText();
-	}
-
-	public byte[] toWKB() {
-		WKBWriter writer = new WKBWriter();
-		return writer.write(this.geometry);		
-	}
-
-	public String toWKT() {
-		WKTWriter writer = new WKTWriter();
-		return writer.write(this.geometry);		
-	}
-
-	public byte[] toByteArray() {
-		return new WKBWriter().write(this.geometry);
-	}
-
-
-
 	public static StrabonPolyhedron union(StrabonPolyhedron A, StrabonPolyhedron B) throws Exception {
 		StrabonPolyhedron poly = new StrabonPolyhedron();
 
 		int targetSRID = A.getGeometry().getSRID();
 		int sourceSRID = B.getGeometry().getSRID();
-		Geometry x = convertSRID(B.getGeometry(), sourceSRID, targetSRID);
+		Geometry x = JTSWrapper.getInstance().transform(B.getGeometry(), sourceSRID, targetSRID);
 
 		poly.geometry = A.geometry.union(x);
 		poly.geometry.setSRID(targetSRID);
@@ -754,7 +697,7 @@ public class StrabonPolyhedron implements Value {
 
 		int targetSRID = A.getGeometry().getSRID();
 		int sourceSRID = B.getGeometry().getSRID();
-		Geometry x = convertSRID(B.getGeometry(), sourceSRID, targetSRID);
+		Geometry x = JTSWrapper.getInstance().transform(B.getGeometry(), sourceSRID, targetSRID);
 		Geometry geo = A.geometry.intersection(x);
 		geo.setSRID(targetSRID);
 		return new StrabonPolyhedron(geo);
@@ -765,7 +708,7 @@ public class StrabonPolyhedron implements Value {
 
 		int targetSRID = A.getGeometry().getSRID();
 		int sourceSRID = B.getGeometry().getSRID();
-		Geometry x = convertSRID(B.getGeometry(), sourceSRID, targetSRID);
+		Geometry x = JTSWrapper.getInstance().transform(B.getGeometry(), sourceSRID, targetSRID);
 
 		poly.geometry = A.geometry.difference(x);
 		poly.geometry.setSRID(targetSRID);
@@ -776,7 +719,7 @@ public class StrabonPolyhedron implements Value {
 		StrabonPolyhedron poly = new StrabonPolyhedron();
 		int targetSRID = A.getGeometry().getSRID();
 		int sourceSRID = B.getGeometry().getSRID();
-		Geometry x = convertSRID(B.getGeometry(), sourceSRID, targetSRID);
+		Geometry x = JTSWrapper.getInstance().transform(B.getGeometry(), sourceSRID, targetSRID);
 		poly.geometry = A.geometry.symDifference(x);
 		poly.geometry.setSRID(targetSRID);
 		return poly;
@@ -789,7 +732,7 @@ public class StrabonPolyhedron implements Value {
 	public static double distance(StrabonPolyhedron A, StrabonPolyhedron B) throws Exception {
 		int targetSRID = A.getGeometry().getSRID();
 		int sourceSRID = B.getGeometry().getSRID();
-		Geometry x = convertSRID(B.getGeometry(), sourceSRID, targetSRID);
+		Geometry x = JTSWrapper.getInstance().transform(B.getGeometry(), sourceSRID, targetSRID);
 		return A.geometry.distance(x);
 	}
 
@@ -805,7 +748,7 @@ public class StrabonPolyhedron implements Value {
 	public static StrabonPolyhedron transform(StrabonPolyhedron A, URI srid) throws Exception {
 		
 		int parsedSRID = Integer.parseInt(srid.toString().substring(srid.toString().lastIndexOf('/')+1));
-		Geometry converted = StrabonPolyhedron.convertSRID(A.getGeometry(),A.getGeometry().getSRID(), parsedSRID);
+		Geometry converted = JTSWrapper.getInstance().transform(A.getGeometry(), A.getGeometry().getSRID(), parsedSRID);
 		return new StrabonPolyhedron(converted);
 	}
 
@@ -867,33 +810,25 @@ public class StrabonPolyhedron implements Value {
 		return poly;
 	}
 
-
 	public StrabonPolyhedron getBuffer(double distance) throws Exception {
 		Geometry geo = this.geometry.buffer(distance);
-		System.out.println("TEMPORARY ----> BUFFER EXECUTED!!");
 		return new StrabonPolyhedron(geo);
 	}
 
 	public StrabonPolyhedron getBoundary() throws Exception {
 		Geometry geo = this.geometry.getBoundary();
-		System.out.println("TEMPORARY ----> BOUNDARY EXECUTED!!");
 		return new StrabonPolyhedron(geo);
 	}
 
 	public StrabonPolyhedron getEnvelope() throws Exception {
 		Geometry geo = this.geometry.getEnvelope();
-		System.out.println("TEMPORARY ----> BB EXECUTED!!");
 		return new StrabonPolyhedron(geo);
 	}
 
 	public double getArea() throws Exception {
 		return this.getArea();
 	}
-
-	public Geometry getGeometry() {
-		return this.geometry;
-	}
-
+	
 	public int getNumPoints() {
 		return this.geometry.getNumPoints();
 	}
@@ -908,90 +843,5 @@ public class StrabonPolyhedron implements Value {
 									MultiPolygon.class.isInstance(geo) ? "MultiPolygon" :
 										GeometryCollection.class.isInstance(geo) ? "GeometryCollection" : 
 											"Unknown";
-	}
-
-	public static void main(String[] args) {		
-		double start, stop;
-		double construct = 0;
-		double constructWKT = 0;
-		double tostring = 0;
-		double toconstraints = 0;
-
-		for (int i = 0; i < 100; i++) {
-			try {			
-				String WKT = "POLYGON(("
-						+ "342164.38954080583 5536425.686612717 , "
-						+ "341626.21626698505 5536449.481769281 , "
-						+ "341533.2278808594  5536525.216353727 , "
-						+ "341233.98619135865 5536475.226529011 , "
-						+ "341127.21075357014 5536983.653040268 , "
-						+ "341215.02899532224 5537144.780243294 , "
-						+ "340955.95747845445 5537799.537709246 , "
-						+ "343211.19068847306 5537879.8934287615, "
-						+ "343442.00065602345 5537324.533655008 , "
-						+ "343314.06638177147 5537172.864526819 , "
-						+ "343297.4180221379  5536922.705445975 , "
-						+ "342969.57149877446 5536768.366861146 , "
-						+ "342464.2661603174  5536951.549574836 , "
-						+ "342296.77657097764 5536842.341803761 , "
-						+ "342222.48151387094 5536641.402704332 , "
-						+ "342286.9145411997  5536458.319970291 , "
-						+ "342164.38954080583 5536425.686612717" + "))";
-
-				start = System.nanoTime();
-				Geometry geo = new WKTReader().read(WKT);
-				geo.isValid();
-				geo.isSimple();
-				geo.normalize();
-				constructWKT += System.nanoTime() - start;
-
-				start = System.nanoTime();
-				StrabonPolyhedron poly = new StrabonPolyhedron(WKT);
-				construct += System.nanoTime() - start;
-
-				//System.out.println("-------------------S-T-R-I-N-G-----------------start");
-				start = System.nanoTime();
-				String polyString = poly.toString();
-				tostring += System.nanoTime() - start;
-				//System.out.println(polyString);
-
-				//System.out.println("-------------------S-T-R-I-N-G-----------------end");
-				//System.out.println("-------------C-O-N-S-T-R-A-I-N-T-S-------------start");
-				start = System.nanoTime();
-				//String constraintString = poly.toConstraints();
-				toconstraints += System.nanoTime() - start;
-				//System.out.println(constraintString);
-				//System.out.println("-----------------------------------------------end");
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-
-		System.out.println("Construct (WKT): " + constructWKT);
-		System.out.println("Construct      : " + construct);
-		System.out.println("To String      : " + tostring);
-		System.out.println("To Constraints : " + toconstraints);
-		System.out.println("-------------------------------------------------");
-		System.out.println("Costruct/Construct(WKT):" + (100*construct/constructWKT));
-		System.out.println("To Constraints/To String:" + (100*toconstraints/tostring));
-	}
-
-	public String stringValue() {
-		return this.toWKT();
-	}
-
-	@Override
-	public boolean equals(Object other) {
-
-		if(other instanceof StrabonPolyhedron)
-		{
-			if (((StrabonPolyhedron) other).geometry.equals(this.getGeometry()))
-			{
-				return true;
-			}
-
-		}
-		return false;
 	}
 }

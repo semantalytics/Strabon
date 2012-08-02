@@ -158,6 +158,9 @@ public class ValueTableFactory {
 		if (!sequenced) {
 			table.setTemporaryTable(factory.createTemporaryTable(conn, "INSERT_" + name));
 		}
+		if ( name.equals(TIMES) )
+			initValueTable(table, queue, sqlType, length, true);
+		else
 		initValueTable(table, queue, sqlType, length, INDEX_VALUES);
 		return table;
 	}
@@ -171,7 +174,7 @@ public class ValueTableFactory {
 			int sqlType, int length)
 		throws SQLException
 	{
-		System.out.println("Create GeoValueTable!!");
+		//System.out.println("Create GeoValueTable!!");
 		GeoValueTable table = newGeoValueTable();
 		
 		table.setRdbmsTable(createTable(conn, name));

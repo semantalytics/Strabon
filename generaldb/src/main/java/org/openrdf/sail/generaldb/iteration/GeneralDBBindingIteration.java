@@ -8,33 +8,27 @@ package org.openrdf.sail.generaldb.iteration;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 
-import org.openrdf.model.Literal;
 import org.openrdf.model.Value;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.algebra.evaluation.QueryBindingSet;
-import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
 import org.openrdf.sail.generaldb.GeneralDBSpatialFuncInfo;
 import org.openrdf.sail.generaldb.GeneralDBValueFactory;
 import org.openrdf.sail.generaldb.algebra.GeneralDBColumnVar;
+import org.openrdf.sail.generaldb.schema.IdSequence;
+import org.openrdf.sail.generaldb.schema.ValueTable;
 import org.openrdf.sail.rdbms.exceptions.RdbmsQueryEvaluationException;
 import org.openrdf.sail.rdbms.iteration.base.RdbmIterationBase;
 import org.openrdf.sail.rdbms.model.RdbmsResource;
 import org.openrdf.sail.rdbms.model.RdbmsValue;
-import org.openrdf.sail.generaldb.schema.IdSequence;
-import org.openrdf.sail.generaldb.schema.ValueTable;
-
-import com.vividsolutions.jts.io.ParseException;
 
 /**
  * Converts a {@link ResultSet} into a {@link BindingSet} in an iteration.
  * 
- * @author James Leigh
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
  * 
  */
 public abstract class GeneralDBBindingIteration extends RdbmIterationBase<BindingSet, QueryEvaluationException> {
@@ -108,6 +102,26 @@ public abstract class GeneralDBBindingIteration extends RdbmIterationBase<Bindin
 	protected BindingSet convert(ResultSet rs)
 	throws SQLException
 	{
+		
+		/// debug
+		/*for(int i=1; i<12;i++) {
+			Object o = rs.getObject(i);
+			if (o instanceof byte[] ) {
+				byte[] label = rs.getBytes(i);
+				int srid = rs.getInt(i + 1);
+				GeneralDBPolyhedron g = vf.getRdbmsPolyhedron(114, StrabonPolyhedron.ogcGeometry, label, srid);
+				System.out.println(i+": "+g.getPolyhedronStringRep());
+			} else if (o instanceof Blob ) {
+				Blob labelBlob = rs.getBlob(i); 
+				byte[] label = labelBlob.getBytes((long)1, (int)labelBlob.length());
+				int srid = rs.getInt(i + 1);
+				GeneralDBPolyhedron g = vf.getRdbmsPolyhedron(114, StrabonPolyhedron.ogcGeometry, label, srid);
+				System.out.println(i+": "+g.getPolyhedronStringRep());
+			}  
+			else 
+				System.out.println(i+": "+rs.getObject(i));
+		}*/
+		///
 
 		QueryBindingSet result = new QueryBindingSet(bindings);
 		for (GeneralDBColumnVar var : projections) {
@@ -136,16 +150,16 @@ public abstract class GeneralDBBindingIteration extends RdbmIterationBase<Bindin
 			Value value = null;
 			switch(construct.getType())
 			{
-			case Boolean: 
+			case BOOLEAN: 
 				value = createBooleanGeoValueForSelectConstructs(rs, sp_ConstructIndexesAndNames.get(construct));
 				break;
-			case Double: 
+			case DOUBLE: 
 				value = createDoubleGeoValueForSelectConstructs(rs, sp_ConstructIndexesAndNames.get(construct));
 				break;
-			case Integer: 
+			case INTEGER: 
 				value = createIntegerGeoValueForSelectConstructs(rs, sp_ConstructIndexesAndNames.get(construct));
 				break;
-			case String: 
+			case STRING: 
 				value = createStringGeoValueForSelectConstructs(rs, sp_ConstructIndexesAndNames.get(construct));
 				break;
 			case WKB: 

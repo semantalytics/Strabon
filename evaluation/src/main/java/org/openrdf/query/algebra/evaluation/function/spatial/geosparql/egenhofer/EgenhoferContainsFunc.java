@@ -5,15 +5,17 @@
  */
 package org.openrdf.query.algebra.evaluation.function.spatial.geosparql.egenhofer;
 
-import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
+import org.openrdf.query.algebra.evaluation.function.spatial.GeoConstants;
 import org.openrdf.query.algebra.evaluation.function.spatial.geosparql.GeoSparqlRelation;
 
-
+/**
+ * 
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
+ */
 public class EgenhoferContainsFunc extends GeoSparqlRelation {
 
 	@Override
 	public String getURI() {
-		return StrabonPolyhedron.ehContains;
-		}
-
+		return GeoConstants.ehContains;
+	}
 }

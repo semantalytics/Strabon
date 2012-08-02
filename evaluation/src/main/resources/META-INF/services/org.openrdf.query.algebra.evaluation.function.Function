@@ -5,6 +5,10 @@ org.openrdf.query.algebra.evaluation.function.DecimalCast
 org.openrdf.query.algebra.evaluation.function.IntegerCast
 org.openrdf.query.algebra.evaluation.function.BooleanCast
 org.openrdf.query.algebra.evaluation.function.DateTimeCast
+org.openrdf.query.algebra.evaluation.function.link.SimilarTermFunc
+org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.mbb.MbbIntersectsFunc
+org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.mbb.MbbEqualsFunc
+org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.IntersectsFunc
 org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.AnyInteractFunc
 org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.ContainsFunc
 org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.CoveredByFunc
@@ -33,6 +37,7 @@ org.openrdf.query.algebra.evaluation.function.spatial.stsparql.metric.AreaFunc
 org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.DimensionFunc
 org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.GeometryTypeFunc
 org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.AsTextFunc
+org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.AsGMLFunc
 org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.SridFunc
 org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.IsEmptyFunc
 org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.IsSimpleFunc

@@ -9,13 +9,14 @@ import java.sql.Types;
 
 import org.openrdf.model.URI;
 import org.openrdf.model.vocabulary.XMLSchema;
-import org.openrdf.query.algebra.MathExpr;
 import org.openrdf.query.algebra.Compare.CompareOp;
+import org.openrdf.query.algebra.MathExpr;
 import org.openrdf.sail.generaldb.algebra.GeneralDBDoubleValue;
 import org.openrdf.sail.generaldb.algebra.GeneralDBFalseValue;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlAbove;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlAbs;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlAnd;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlAnyInteract;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlBelow;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlCase;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlCast;
@@ -28,6 +29,7 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSqlDisjoint;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlEq;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlEqualsSpatial;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoArea;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoAsGML;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoAsText;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoBoundary;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoBuffer;
@@ -45,11 +47,14 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSymDifference;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoTransform;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoUnion;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlInside;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlIntersects;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlIsNull;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlLeft;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlLike;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlLowerCase;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlMathExpr;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlMbbEquals;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlMbbIntersects;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlNot;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlOr;
@@ -59,9 +64,6 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSqlRelate;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlRight;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlTouch;
 import org.openrdf.sail.generaldb.algebra.GeneralDBStringValue;
-import org.openrdf.sail.rdbms.exceptions.UnsupportedRdbmsOperatorException;
-
-import org.openrdf.sail.generaldb.algebra.GeneralDBSqlAnyInteract;
 import org.openrdf.sail.generaldb.algebra.egenhofer.GeneralDBSqlEgenhofer_Contains;
 import org.openrdf.sail.generaldb.algebra.egenhofer.GeneralDBSqlEgenhofer_CoveredBy;
 import org.openrdf.sail.generaldb.algebra.egenhofer.GeneralDBSqlEgenhofer_Covers;
@@ -86,6 +88,7 @@ import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Intersects;
 import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Overlaps;
 import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Touches;
 import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Within;
+import org.openrdf.sail.rdbms.exceptions.UnsupportedRdbmsOperatorException;
 /**
  * Support method to create SQL expressions.
  * 
@@ -282,6 +285,18 @@ public class GeneralDBExprSupport {
 	public static GeneralDBSqlExpr touch(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
 		return new GeneralDBSqlTouch(left, right);
 	}
+	
+	public static GeneralDBSqlExpr intersects(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlIntersects(left, right);
+	}
+	
+	public static GeneralDBSqlExpr mbbIntersects(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlMbbIntersects(left, right);
+	}
+	
+	public static GeneralDBSqlExpr mbbEqualsGeo(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlMbbEquals(left, right);
+	}
 
 	public static GeneralDBSqlExpr equalsGeo(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
 		return new GeneralDBSqlEqualsSpatial(left, right);
@@ -399,6 +414,10 @@ public class GeneralDBExprSupport {
 	public static GeneralDBSqlExpr asText(GeneralDBSqlExpr expr) {
 
 		return new GeneralDBSqlGeoAsText(expr);
+	}
+	
+	public static GeneralDBSqlExpr asGML(GeneralDBSqlExpr expr) {
+		return new GeneralDBSqlGeoAsGML(expr);
 	}
 
 	public static GeneralDBSqlExpr srid(GeneralDBSqlExpr expr) {

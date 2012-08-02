@@ -7,9 +7,6 @@ package org.openrdf.query.algebra.evaluation.util;
 
 import java.util.Comparator;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.openrdf.model.Value;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.QueryEvaluationException;
@@ -20,8 +17,9 @@ import org.openrdf.query.algebra.ValueExpr;
 import org.openrdf.query.algebra.Var;
 import org.openrdf.query.algebra.evaluation.EvaluationStrategy;
 import org.openrdf.query.algebra.evaluation.ValueExprEvaluationException;
-import org.openrdf.query.algebra.evaluation.function.spatial.SpatialConstructFunc;
-import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
+import org.openrdf.query.algebra.evaluation.function.spatial.GeoConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author james
@@ -53,7 +51,7 @@ public class StSPARQLOrderComparator implements Comparator<BindingSet> {
 				if(element.getExpr() instanceof FunctionCall)
 				{
 					FunctionCall fc = (FunctionCall) element.getExpr();
-					if(fc.getURI().equals(StrabonPolyhedron.envelope) && fc.getArgs().size()==2)
+					if(fc.getURI().equals(GeoConstants.envelope) && fc.getArgs().size()==2)
 					{
 						mbbFlag = true;
 						FunctionCall expr = (FunctionCall) element.getExpr();
@@ -88,11 +86,11 @@ public class StSPARQLOrderComparator implements Comparator<BindingSet> {
 			return 0;
 		}
 		catch (QueryEvaluationException e) {
-			logger.debug(e.getMessage(), e);
+			logger.error(e.getMessage(), e);
 			return 0;
 		}
 		catch (IllegalArgumentException e) {
-			logger.debug(e.getMessage(), e);
+			logger.error(e.getMessage(), e);
 			return 0;
 		}
 	}

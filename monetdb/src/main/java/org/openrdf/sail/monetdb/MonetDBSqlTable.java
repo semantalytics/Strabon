@@ -7,12 +7,12 @@ package org.openrdf.sail.monetdb;
 
 import java.sql.SQLException;
 
+import org.openrdf.query.algebra.evaluation.function.spatial.GeoConstants;
 import org.openrdf.sail.generaldb.GeneralDBSqlTable;
 
 /**
- * Converts table names to lower-case and include the analyse optimisation.
  * 
- * @author James Leigh
+ * @author George Garbis <ggarbis@di.uoa.gr>
  * 
  */
 public class MonetDBSqlTable extends GeneralDBSqlTable {
@@ -46,8 +46,9 @@ public class MonetDBSqlTable extends GeneralDBSqlTable {
 	}
 	
 	@Override
-	public String buildInsertGeometryValue() { // FIXME for srid
-		return " (id, strdfgeo) VALUES (CAST(? AS INTEGER),GeomFromWKB(?))";
+	public String buildInsertGeometryValue() {
+		Integer srid=  GeoConstants.defaultSRID;
+		return " (id, strdfgeo,srid) VALUES (CAST(? AS INTEGER), Transform(GeomFromWKB(CAST(? AS BLOB),CAST(? AS INTEGER)),"+srid+"), CAST(? AS INTEGER))";
 	}
 	
 	@Override
@@ -72,5 +73,10 @@ public class MonetDBSqlTable extends GeneralDBSqlTable {
 	@Override
 	public String buildDynamicParameterInteger() {
 			return "CAST( ? AS INTEGER)";
+	}
+	
+	@Override
+	public String buildWhere() {
+		return " WHERE (1=1 OR 1=1) ";
 	}
 }

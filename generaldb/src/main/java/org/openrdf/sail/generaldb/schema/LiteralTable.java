@@ -9,8 +9,18 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.lang.IllegalArgumentException;
+
+import javax.xml.bind.JAXBException;
+
 import org.openrdf.sail.generaldb.exceptions.conversionException;
 import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
+import org.openrdf.query.algebra.evaluation.function.spatial.WKTHelper;
+import org.openrdf.query.algebra.evaluation.util.JTSWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.io.ParseException;
 
 /**
  * A Facade to the five literal value tables. Which are labels, languages,
@@ -21,6 +31,8 @@ import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
  */
 public class LiteralTable {
 
+	private static Logger logger = LoggerFactory.getLogger(org.openrdf.sail.generaldb.schema.LiteralTable.class);
+	
 	public static final boolean ONLY_INSERT_LABEL = false;
 
 	private ValueTable labels;
@@ -169,7 +181,7 @@ public class LiteralTable {
 			geomWKB = polyhedron.toByteArray();
 			
 		
-		} catch (conversionException e) {
+		} catch (IllegalArgumentException e) {
 			e.printStackTrace();
 		} catch (Exception e) {
 			throw new SQLException("An issue occurred in the underlying StrabonPolyhedron's constructor!");
@@ -188,36 +200,48 @@ public class LiteralTable {
 	//the new version will actually deal with WKB
 	public void insertWKT(Number id, String label, String datatype,Timestamp start,Timestamp end) throws SQLException, NullPointerException,InterruptedException,IllegalArgumentException
 	{
-		
-		byte[] geomWKB = null;
-		
 		try {
+			Geometry geom = JTSWrapper.getInstance().WKTread(label);
+			geoSpatialTable.insert(id, WKTHelper.getSRID(label),/* start,end,*/ JTSWrapper.getInstance().WKBwrite(geom));
 			
-			/***XXX new stuff dictated by kkyzir's StrabonPolyhedron***/
-			
-			StrabonPolyhedron polyhedron = new StrabonPolyhedron(label,2);//current algorithm selected: approx convex partition
-			geomWKB = polyhedron.toWKB();
-			
-		}  catch (conversionException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (Exception e) {
-			e.printStackTrace();
+		} catch (ParseException e) {
+			throw new IllegalArgumentException(e);
 		}
-		Integer srid= findSRID(label);
-		geoSpatialTable.insert(id,srid,/* start,end,*/ geomWKB);
-		
-		//XXX not needed currently because this method is called AFTER an insertDatatype()
-		//		insertSimple(id, label);
-		//		datatypes.insert(id, datatype);
 	}
-	/********************************************************************/
+	
+	/**
+	 * Inserts a the given geometry represented in GML into the geo_values table.
+	 * 
+	 * @param id
+	 * @param label
+	 * @param datatype
+	 * @param start
+	 * @param end
+	 * @throws SQLException
+	 * @throws NullPointerException
+	 * @throws InterruptedException
+	 * @throws IllegalArgumentException
+	 */
+	public void insertGML(Number id, String gml, String datatype, Timestamp start, Timestamp end) throws SQLException, NullPointerException,InterruptedException,IllegalArgumentException {
+		Geometry geom;
+		try {
+			geom = JTSWrapper.getInstance().GMLread(gml);
+			geoSpatialTable.insert(id, geom.getSRID(),/* start,end,*/ JTSWrapper.getInstance().WKBwrite(geom));
+			
+		} catch (JAXBException e) {
+			logger.error("[Strabon.insertGML] Error during insertion of GML literal.", e);
+		}
+		
+	}
+	
 	public void insertNumeric(Number id, String label, String datatype, double value)
 	throws SQLException, InterruptedException
 	{
 		labels.insert(id, label);
 		datatypes.insert(id, datatype);
+		if (logger.isDebugEnabled()) {
+			logger.debug("about to insert double value: {}", value);
+		}
 		numeric.insert(id, value);
 	}
 
@@ -254,21 +278,42 @@ public class LiteralTable {
 		return bool;
 	}
 	
+	
+	
 	public static Integer findSRID(String label){
 		String[] crs=label.split(";");
+		String crsUri=null;
+		
 		if((crs.length == 1))
 		{
-			System.out.println("srid not specified. 4326 will be used as default.");
-			return 4326; //use this as default
+			if(label.contains("gml"))
+			{
+				try {
+					StrabonPolyhedron poly = new StrabonPolyhedron(label);
+					if(poly.getGeometry().getSRID()>0)
+						return poly.getGeometry().getSRID();
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+			}
+			else
+			{
+				return 4326;
+			} 
 		}
+		else
+			crsUri = crs[1];
+		
 		String prefix="http://www.opengis.net/def/crs/EPSG/0/";
-		if(crs[1].startsWith(prefix)){
-			int index=crs[1].lastIndexOf('/');
+		if(crsUri.startsWith(prefix)){
+			int index=crsUri.lastIndexOf('/');
 			index++;
-			Integer srid = Integer.parseInt(crs[1].substring(index));
-			 System.out.println("The EPSG code: " + srid);
+			Integer srid = Integer.parseInt(crsUri.substring(index));
+			//System.out.println("The EPSG code: " + srid);
 					 
-			System.out.println("SRS FOUND:"+srid);
+			//System.out.println("SRS FOUND:"+srid);
 			 return srid;
 		}else{
 			throw new IllegalArgumentException("MALFORMED URI FOR SRID!!!");

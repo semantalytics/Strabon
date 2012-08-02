@@ -7,20 +7,17 @@
 package org.openrdf.query.algebra.evaluation.impl;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.Dataset;
 import org.openrdf.query.algebra.Compare;
 import org.openrdf.query.algebra.Extension;
-import org.openrdf.query.algebra.ExtensionElem;
 import org.openrdf.query.algebra.Filter;
 import org.openrdf.query.algebra.FunctionCall;
 import org.openrdf.query.algebra.Join;
@@ -28,31 +25,28 @@ import org.openrdf.query.algebra.LeftJoin;
 import org.openrdf.query.algebra.MathExpr;
 import org.openrdf.query.algebra.Or;
 import org.openrdf.query.algebra.QueryModelNode;
-import org.openrdf.query.algebra.QueryModelNodeBase;
 import org.openrdf.query.algebra.StatementPattern;
-import org.openrdf.query.algebra.MathExpr.MathOp;
 import org.openrdf.query.algebra.StatementPattern.Scope;
 import org.openrdf.query.algebra.TupleExpr;
 import org.openrdf.query.algebra.ValueExpr;
 import org.openrdf.query.algebra.Var;
-import org.openrdf.query.algebra.evaluation.QueryOptimizer;
 import org.openrdf.query.algebra.evaluation.function.Function;
-import org.openrdf.query.algebra.evaluation.function.FunctionRegistry; 
+import org.openrdf.query.algebra.evaluation.function.FunctionRegistry;
 import org.openrdf.query.algebra.evaluation.function.spatial.SpatialConstructFunc;
-import org.openrdf.query.algebra.evaluation.function.spatial.SpatialMetricFunc; 
+import org.openrdf.query.algebra.evaluation.function.spatial.SpatialMetricFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.SpatialPropertyFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.SpatialRelationshipFunc;
 import org.openrdf.query.algebra.helpers.QueryModelVisitorBase;
-import org.openrdf.query.algebra.helpers.StatementPatternCollector; 
+import org.openrdf.query.algebra.helpers.StatementPatternCollector;
 
 /**
  * A query optimizer that re-orders nested Joins.
  * 
- * @author Arjohn Kampman
- * @author James Leigh
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
  */
-
-public class SpatialJoinOptimizer implements QueryOptimizer {
+public class SpatialJoinOptimizer 
+//implements QueryOptimizer //Removed it consciously 
+{
 
 
 	//private Set<String> existingVars = new TreeSet<String>();
@@ -62,12 +56,21 @@ public class SpatialJoinOptimizer implements QueryOptimizer {
 	 * 
 	 * @param tupleExpr
 	 */
-	public void optimize(TupleExpr tupleExpr, Dataset dataset, BindingSet bindings) {
-		tupleExpr.visit(new JoinVisitor());
+	public void optimize(TupleExpr tupleExpr, Dataset dataset, BindingSet bindings, List<TupleExpr> spatialJoins) {
+		tupleExpr.visit(new JoinVisitor(spatialJoins));
 	}
 
 	protected class JoinVisitor extends QueryModelVisitorBase<RuntimeException> {
+		
+		
+		
+		public JoinVisitor(List<TupleExpr> spatialJoins) {
+			super();
+			this.spatialJoins = spatialJoins;
+		}
 
+		
+		private List<TupleExpr> spatialJoins;
 		//buffer with a var as a second argument
 		private boolean problematicBuffer = false;
 
@@ -195,6 +198,7 @@ public class SpatialJoinOptimizer implements QueryOptimizer {
 			}
 
 			//Checking graph to be sure
+			/*
 			for(int a = 0; a < allNodes; a++)
 			{
 				for(int b = 0; b < allNodes; b++)
@@ -204,6 +208,7 @@ public class SpatialJoinOptimizer implements QueryOptimizer {
 				}
 				System.out.println("");
 			}
+			*/
 
 			//Time to construct ordered sequence of joins + filters
 			List<TupleExpr> orderedJoinArgs = new ArrayList<TupleExpr>(allNodes);
@@ -223,9 +228,11 @@ public class SpatialJoinOptimizer implements QueryOptimizer {
 				}
 
 			}
+
+			/*
 			System.out.println("*--REWRITTEN TREE--**");
 			System.out.println(finalList.toString());
-
+			*/
 
 			int varsMapSize = varsMap.size();
 			for(Integer position : finalList)
@@ -271,6 +278,9 @@ public class SpatialJoinOptimizer implements QueryOptimizer {
 							Map.Entry entry = (Map.Entry)it.next();
 							if(count == position - varsMapSize)
 							{
+								//If I keep record of this entry, I can use the info later to avoid duplicate filters
+								spatialJoins.add((TupleExpr) entry.getKey());
+								//
 								orderedJoinArgs.add((TupleExpr) entry.getKey());
 								it.remove();
 								for(int fix = 0 ; fix < finalList.size(); fix++)
@@ -325,7 +335,11 @@ public class SpatialJoinOptimizer implements QueryOptimizer {
 			}
 		}
 
-
+		/**
+		 * General Comment: If more than one function exists in the query and can be used to perform the join, no preference is shown 
+		 * on which function will actually be used for this purpose. This could cause an issue if ST_Disjoint is the one finally used, 
+		 * as the index won't be used for the evaluation in this case. Perhaps I should include some 'priority'
+		 */
 		@Override
 		public void meet(Filter node) {
 

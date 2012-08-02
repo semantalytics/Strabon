@@ -5,33 +5,24 @@
  */
 package org.openrdf.sail.generaldb.algebra.factories;
 
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.anyInteract;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.asText;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.contains;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.coveredBy;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.covers;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.dimension;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.disjoint;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.equalsGeo;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoArea;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoBoundary;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoBuffer;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoTransform;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoConvexHull;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoDifference;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoDistance;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoEnvelope;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoIntersection;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoSymDifference;
+import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoTransform;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoUnion;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geometryType;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.inside;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.isEmpty;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.isSimple;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.overlap;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.sqlNull;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.srid;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.touch;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.unsupported;
 
 import org.openrdf.model.Literal;
@@ -42,19 +33,18 @@ import org.openrdf.query.algebra.Datatype;
 import org.openrdf.query.algebra.FunctionCall;
 import org.openrdf.query.algebra.Lang;
 import org.openrdf.query.algebra.MathExpr;
+import org.openrdf.query.algebra.MathExpr.MathOp;
 import org.openrdf.query.algebra.QueryModelNode;
 import org.openrdf.query.algebra.Str;
 import org.openrdf.query.algebra.ValueConstant;
 import org.openrdf.query.algebra.ValueExpr;
 import org.openrdf.query.algebra.Var;
-import org.openrdf.query.algebra.MathExpr.MathOp;
 import org.openrdf.query.algebra.evaluation.function.Function;
 import org.openrdf.query.algebra.evaluation.function.FunctionRegistry;
+import org.openrdf.query.algebra.evaluation.function.spatial.GeoConstants;
 import org.openrdf.query.algebra.evaluation.function.spatial.SpatialConstructFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.SpatialMetricFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.SpatialPropertyFunc;
-import org.openrdf.query.algebra.evaluation.function.spatial.SpatialRelationshipFunc;
-import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
 import org.openrdf.query.algebra.evaluation.function.spatial.geosparql.nontopological.GeoSparqlBoundaryFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.geosparql.nontopological.GeoSparqlConvexHullFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.geosparql.nontopological.GeoSparqlEnvelopeFunc;
@@ -312,12 +302,12 @@ public class GeneralDBNumericExprFactory extends QueryModelVisitorBase<Unsupport
 			}
 			else
 			{
-				if(function.getURI().equals(StrabonPolyhedron.buffer))
+				if(function.getURI().equals(GeoConstants.buffer))
 				{
 					//Be it a Var or a Value Constant, 'numeric' is the way to go
 					rightArg = this.createNumericExpr(right);
 				}
-				else if(function.getURI().equals(StrabonPolyhedron.transform))
+				else if(function.getURI().equals(GeoConstants.transform))
 				{
 					//Another special case -> Second argument of this function is a URI
 					rightArg = uri(right);
@@ -398,69 +388,69 @@ public class GeneralDBNumericExprFactory extends QueryModelVisitorBase<Unsupport
 
 	GeneralDBSqlExpr spatialConstructPicker(Function function,GeneralDBSqlExpr leftArg, GeneralDBSqlExpr rightArg)
 	{
-		if(function.getURI().equals(StrabonPolyhedron.union))
+		if(function.getURI().equals(GeoConstants.union))
 		{
 			return geoUnion(leftArg, rightArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.buffer))
+		else if(function.getURI().equals(GeoConstants.buffer))
 		{
 			return geoBuffer(leftArg,rightArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.transform))
+		else if(function.getURI().equals(GeoConstants.transform))
 		{
 			return geoTransform(leftArg,rightArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.envelope))
+		else if(function.getURI().equals(GeoConstants.envelope))
 		{
 			return geoEnvelope(leftArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.convexHull))
+		else if(function.getURI().equals(GeoConstants.convexHull))
 		{
 			return geoConvexHull(leftArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.boundary))
+		else if(function.getURI().equals(GeoConstants.boundary))
 		{
 			return geoBoundary(leftArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.intersection))
+		else if(function.getURI().equals(GeoConstants.intersection))
 		{
 			return geoIntersection(leftArg, rightArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.difference))
+		else if(function.getURI().equals(GeoConstants.difference))
 		{
 			return geoDifference(leftArg, rightArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.symDifference))
+		else if(function.getURI().equals(GeoConstants.symDifference))
 		{
 			return geoSymDifference(leftArg, rightArg);
 		}
 		//XXX GeoSPARQL - Non topological - except distance
 		//TODO Must add buffer after deciding how to implement it
-		else if(function.getURI().equals(StrabonPolyhedron.geoSparqlConvexHull))
+		else if(function.getURI().equals(GeoConstants.geoSparqlConvexHull))
 		{
 			return geoConvexHull(leftArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.geoSparqlIntersection))
+		else if(function.getURI().equals(GeoConstants.geoSparqlIntersection))
 		{
 			return geoIntersection(leftArg, rightArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.geoSparqlUnion))
+		else if(function.getURI().equals(GeoConstants.geoSparqlUnion))
 		{
 			return geoUnion(leftArg, rightArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.geoSparqlDifference))
+		else if(function.getURI().equals(GeoConstants.geoSparqlDifference))
 		{
 			return geoDifference(leftArg, rightArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.geoSparqlSymmetricDifference))
+		else if(function.getURI().equals(GeoConstants.geoSparqlSymmetricDifference))
 		{
 			return geoSymDifference(leftArg, rightArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.geoSparqlEnvelope))
+		else if(function.getURI().equals(GeoConstants.geoSparqlEnvelope))
 		{
 			return geoEnvelope(leftArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.geoSparqlBoundary))
+		else if(function.getURI().equals(GeoConstants.geoSparqlBoundary))
 		{
 			return geoBoundary(leftArg);
 		}
@@ -471,11 +461,11 @@ public class GeneralDBNumericExprFactory extends QueryModelVisitorBase<Unsupport
 	//TODO more to be added here probably
 	GeneralDBSqlExpr spatialMetricPicker(Function function,GeneralDBSqlExpr leftArg, GeneralDBSqlExpr rightArg)
 	{
-		if(function.getURI().equals(StrabonPolyhedron.distance))
+		if(function.getURI().equals(GeoConstants.distance))
 		{
 			return geoDistance(leftArg, rightArg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.area))
+		else if(function.getURI().equals(GeoConstants.area))
 		{
 			return geoArea(leftArg);
 		}
@@ -487,27 +477,27 @@ public class GeneralDBNumericExprFactory extends QueryModelVisitorBase<Unsupport
 
 	GeneralDBSqlExpr spatialPropertyPicker(Function function,GeneralDBSqlExpr arg)
 	{
-		if(function.getURI().equals(StrabonPolyhedron.dimension))
+		if(function.getURI().equals(GeoConstants.dimension))
 		{
 			return dimension(arg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.geometryType))
+		else if(function.getURI().equals(GeoConstants.geometryType))
 		{
 			return geometryType(arg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.asText))
+		else if(function.getURI().equals(GeoConstants.asText))
 		{
 			return asText(arg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.srid))
+		else if(function.getURI().equals(GeoConstants.srid))
 		{
 			return srid(arg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.isEmpty))
+		else if(function.getURI().equals(GeoConstants.isEmpty))
 		{
 			return isEmpty(arg);
 		}
-		else if(function.getURI().equals(StrabonPolyhedron.isSimple))
+		else if(function.getURI().equals(GeoConstants.isSimple))
 		{
 			return isSimple(arg);
 		}

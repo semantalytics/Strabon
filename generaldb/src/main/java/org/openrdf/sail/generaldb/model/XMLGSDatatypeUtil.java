@@ -10,12 +10,14 @@ import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
 import javax.xml.namespace.QName;
 
+import org.openrdf.model.Literal;
 import org.openrdf.model.URI;
+import org.openrdf.model.Value;
 import org.openrdf.model.datatypes.XMLDateTime;
 import org.openrdf.model.vocabulary.XMLSchema;
 
 import org.openrdf.sail.generaldb.model.GeneralDBPolyhedron;
-import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
+import org.openrdf.query.algebra.evaluation.function.spatial.GeoConstants;
 
 
 
@@ -37,48 +39,95 @@ public class XMLGSDatatypeUtil {
 	 *-------------------*/
 
 	/**
-	 * FIXME needs retouching
-	 * My addition!!
-	 * Checks whether the supplied datatype has a geospatial meaning
+	 * Returns true when the given value is an instance of class @{link GeneralDBPolyhedron} 
+	 * or @{link Literal} with datatype @{link StrabonPolyhedron#ogcGeometry} (WKT) or 
+	 * @{link StrabonPolyhedron#gml} (GML).  
+	 * 
+	 * @param value
+	 * @return
+	 * @author Charalampos Nikolaou <charniK@di.uoa.gr>
 	 */
-	public static boolean isGeoSpatialDatatype(URI datatype) {
+	public static boolean isGeometryValue(Value value) {
+		if (value instanceof Literal) {
+			Literal literal = (Literal) value;
 
-		//System.out.println("Function defining whether the requested datatype is of Geospatial meaning");
-		//System.out.println(datatype.toString());
-
-		//FIXME don't know whether it is my ommission, but exception occurs if datatype is null.
-		//perhaps the data weren't in the right format
-
-		//  should i do something to fix it?
-		if(datatype == null)//think it would be ok if i added this
-		{
-			//System.out.println("probably Untyped Literal");
+			if (isWKTLiteral(literal) || isGMLLiteral(literal)) {
+				return true;
+			}
+			
+		} else if (value instanceof GeneralDBPolyhedron) {
+			return true;
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * Returns true when the given literal has as datatype the WKT URI as it is
+	 * in @{link StrabonPolyhedron.WKT}.
+	 * 
+	 * @param literal
+	 * @return
+	 */
+	public static boolean isWKTLiteral(Literal literal) {
+		return isWKTDatatype(literal.getDatatype());
+	}
+	
+	/**
+	 * Returns true when the given literal has as datatype the GML URI as it is
+	 * in @{link StrabonPolyhedron.GML}.
+	 * 
+	 * @param literal
+	 * @return
+	 */
+	public static boolean isGMLLiteral(Literal literal) {
+		return isGMLDatatype(literal.getDatatype());
+	}
+	
+	/**
+	 * Checks whether the supplied datatype is actually a WKT literal.
+	 * 
+	 * @param datatype
+	 * @return
+	 */
+	public static boolean isWKTDatatype(URI datatype) {
+		if(datatype == null) {
 			return false;
 		}
+		
+		return GeoConstants.WKT.equals(datatype.stringValue());
+	}
+	
+	/**
+	 * Checks whether the supplied datatype is actually a GML literal.
+	 * 
+	 * @param datatype
+	 * @return
+	 */
+	public static boolean isGMLDatatype(URI datatype)
+	{
+		if(datatype == null) {
+			return false;
+		}
+	
+		return GeoConstants.GML.equals(datatype.stringValue());
+	}
+	
+	/**
+	 * Checks whether the supplied datatype is actually a SemiLinearPointSet literal.
+	 * 
+	 * @param datatype
+	 * @return
+	 */
+	public static boolean isSemiLinearPointSetDatatype(URI datatype) {
+		if(datatype == null) {
+			return false;
+		}
+		
 		return datatype.toString().equals("http://stsparql.di.uoa.gr/SemiLinearPointSet");
-		//return datatype.toString().equals(GeneralDBPolyhedron.stRDFSemiLinearPointset);
+		//return datatype.toString().equals(StrabonPolyhedron.stRDFSemiLinearPointset);
 	}
-
-	//Checks whether the supplied datatype is actually a WKT literal
-	public static boolean isNestedWKT(URI datatype) {
-
-		//System.out.println("Function defining whether the requested datatype is of Geospatial meaning");
-		//System.out.println(datatype.toString());
-
-		//FIXME don't know whether it is my ommission, but exception occurs if datatype is null.
-		//perhaps the data weren't in the right format
-
-		//  should i do something to fix it?
-		if(datatype == null)//think it would be ok if i added this
-		{
-			//System.out.println("probably Untyped Literal");
-			return false;
-		}
-		//return datatype.toString().equals("http://stsparql.di.uoa.gr/SemiLinearPointSet");
-// to evala apo katw hardcoded giati eixa accessibility issue - konstantina
-			return datatype.toString().equals("http://strdf.di.uoa.gr/ontology#WKT");
-		//return datatype.toString().equals(GeneralDBPolyhedron.getPolyhedron().ogcGeometry);
-	}
+	
 	/**
 	 * Checks whether the supplied datatype is a primitive XML Schema datatype.
 	 */
@@ -188,8 +237,8 @@ public class XMLGSDatatypeUtil {
 	 * Checks whether the supplied datatype is equal to xsd:float or xsd:double.
 	 */
 	public static boolean isFloatingPointDatatype(URI datatype) {
-		return
-		datatype.equals(XMLSchema.FLOAT) ||
+		return 
+		datatype.equals(XMLSchema.FLOAT) || 
 		datatype.equals(XMLSchema.DOUBLE);
 	}
 
@@ -347,7 +396,6 @@ public class XMLGSDatatypeUtil {
 			return false;
 		}
 	}
-
 	public static boolean isValidLong(String value) {
 		try {
 			normalizeLong(value);
@@ -1775,8 +1823,7 @@ public class XMLGSDatatypeUtil {
 			return XMLSchema.DURATION;
 		}
 		else {
-			throw new IllegalArgumentException("QName cannot be mapped to an XML Schema URI: "
-					+ qname.toString());
+			throw new IllegalArgumentException("QName cannot be mapped to an XML Schema URI: " + qname.toString());
 		}
 	}
 

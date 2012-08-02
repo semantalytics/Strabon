@@ -2,8 +2,7 @@
 package org.openrdf.sail.generaldb.schema;
 
 
-import org.openrdf.sail.generaldb.GeneralDBSqlTable;
-import org.openrdf.sail.rdbms.schema.RdbmsTable;
+//import org.apache.commons.codec.binary.Hex;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -11,7 +10,9 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
-import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
+
+import org.openrdf.sail.generaldb.GeneralDBSqlTable;
+import org.openrdf.sail.rdbms.schema.RdbmsTable;
 
 
 /**
@@ -133,17 +134,13 @@ public class GeoValueTable {
 	{
 		StringBuilder sb = new StringBuilder();
 		sb.append("INSERT INTO ").append(getInsertTable().getName());
-		//sb.append(" (id, value, interval_start, interval_end, strdfgeo) VALUES (?, ?,?,?,?)");
-		
-		//Normal One sb.append(" (id, interval_start, interval_end, strdfgeo) VALUES (?,?,?,?)");
-		//sb.append(" (id, interval_start, interval_end, strdfgeo) VALUES (?,?,?,ST_GeomFromWKB(?,4326))");
-		//sb.append(" (id, strdfgeo) VALUES (?,ST_GeomFromWKB(?,32630))");
-		Integer srid=  StrabonPolyhedron.defaultSRID;
-		sb.append(" (id, strdfgeo,srid) VALUES (?,ST_Transform(ST_GeomFromWKB(?,?),").append(srid).append("),?)"); 
+//		Integer srid=  StrabonPolyhedron.defaultSRID;
+//		sb.append(" (id, strdfgeo,srid) VALUES (?,ST_Transform(ST_GeomFromWKB(?,?),").append(srid).append("),?)");
+		sb.append(((GeneralDBSqlTable)table).buildInsertGeometryValue());
 		INSERT = sb.toString();
 		sb.delete(0, sb.length());
 		sb.append("DELETE FROM ").append(table.getName()).append("\n");
-		sb.append("WHERE 1=1 ");
+		sb.append(((GeneralDBSqlTable)table).buildWhere());
 		EXPUNGE = sb.toString();
 		if (temporary != null) {
 			sb.delete(0, sb.length());
@@ -283,6 +280,11 @@ public class GeoValueTable {
 		}
 		else
 		{
+			///
+//			geom[0]=1;
+//			String hexString = new String(Hex.encodeHex(geom));
+//			System.err.println(id+", "+hexString);
+			///
 			batch.setBytes(2,geom);
 		}
 		batch.setObject(3, srid); //adding original srid-constant
