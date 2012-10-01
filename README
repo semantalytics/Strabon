@@ -125,6 +125,11 @@ publications given on this page.
 
 The current versions of stRDF and stSPARQL which are based on OGC standards are
 presented in the following document:
+  * K. Kyzirakos, M. Karpathiotakis, and M. Koubarakis. Strabon: A Semantic 
+    Geospatial DBMS. In Internatioanl Semantic Web Conference (ISWC'12). Boston,
+    USA, November 11-15, 2012.
+    [pdf: http://strabon.di.uoa.gr/files/strabon-iswc.pdf]
+
   * Manolis Koubarakis, Kostis Kyzirakos, Babis Nikolaou, Michael Sioutis, and
     Stavros Vassos. A data model and query language for an extension of RDF with
     time and space. Deliverable D2.1, European ICT project TELEIOS, 2011.
@@ -201,4 +206,45 @@ the Strabon-devel mailing-list Strabon-devel@di.uoa.gr.
 
 License
 =======
-Copyright (C) 2010-2012 Strabon Team
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+Copyright (C) 2010, 2011, 2012, Pyravlos Team
+
+http://www.strabon.di.uoa.gr/
+
+
+How to apply the license
+========================
+In the beginning of script files (after the ???) paste the following statement:
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Copyright (C) 2010, 2011, 2012, Pyravlos Team
+#
+# http://www.strabon.di.uoa.gr/
+#
+
+In the beginning of Java source code files paste the following statement:
+/**
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * 
+ * Copyright (C) 2010, 2011, 2012, Pyravlos Team
+ * 
+ * http://www.strabon.di.uoa.gr/
+ */
+
+In the beginning of HTML/XML files paste the following statement:
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. 
+   -
+   - Copyright (C) 2010, 2011, 2012, Pyravlos Team
+   -
+   - http://www.strabon.di.uoa.gr/
+-->
