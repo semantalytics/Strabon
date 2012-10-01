@@ -1,5 +1,11 @@
 /**
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * 
+ * Copyright (C) 2010, 2011, 2012, Pyravlos Team
+ * 
+ * http://www.strabon.di.uoa.gr/
  */
 package eu.earthobservatory.org.StrabonEndpoint;
 
@@ -37,6 +43,13 @@ public class Common {
 	public static final String SUBMIT_INPUT		= "dsubmit";
 	public static final String SUBMIT_URL		= "fromurl";
 	
+ 	/**
+	 * Parameters used in connection.jsp and in StrabonBeanWrapper.java/beans.xml
+	 */
+	public static final String DBBACKEND_POSTGIS = "postgis";
+	public static final String DBBACKEND_MONETDB = "monetdb";
+
+
 	/**
 	 * Keeps the registered and available RDF formats.
 	 */
@@ -68,5 +81,15 @@ public class Common {
 				registeredQueryResultsFormatNames.add(format.getName());
 			}
 		}
+	}
+	
+	/**
+	 * Method for getting the name of the HTML stSPARQLQueryResultFormat
+	 * in .jsp pages.
+	 * 
+	 * @return
+	 */
+	public static final String getHTMLFormat() {
+		return stSPARQLQueryResultFormat.HTML.getName();
 	}
 }

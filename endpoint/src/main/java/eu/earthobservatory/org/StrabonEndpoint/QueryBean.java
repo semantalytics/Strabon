@@ -1,3 +1,12 @@
+/**
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * 
+ * Copyright (C) 2010, 2011, 2012, Pyravlos Team
+ * 
+ * http://www.strabon.di.uoa.gr/
+ */
 package eu.earthobservatory.org.StrabonEndpoint;
 
 import java.io.ByteArrayOutputStream;
@@ -100,14 +109,37 @@ public class QueryBean extends HttpServlet {
 	public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
 		
-		if (Common.VIEW_TYPE.equals(request.getParameter(Common.VIEW))) {
-			// HTML visual interface
-			processVIEWRequest(request, response);
+		// check connection details
+		if (strabonWrapper.getStrabon() == null) {
+			RequestDispatcher dispatcher = request.getRequestDispatcher("/connection.jsp");
 			
-
-		} else {// invoked as a service
-			processRequest(request, response);
-	    }
+			// pass the current details of the connection
+			request.setAttribute("username", strabonWrapper.getUsername());
+			request.setAttribute("password", strabonWrapper.getPassword());
+			request.setAttribute("dbname", 	 strabonWrapper.getDatabaseName());
+			request.setAttribute("hostname", strabonWrapper.getHostName());
+			request.setAttribute("port", 	 strabonWrapper.getPort());
+			request.setAttribute("dbengine", strabonWrapper.getDBEngine());
+			
+			// pass the other parameters as well
+			request.setAttribute("query", request.getParameter("query"));
+			request.setAttribute("format", request.getParameter("format"));
+			request.setAttribute("handle", request.getParameter("handle"));
+			
+			// forward the request
+			dispatcher.forward(request, response);
+			
+		} else {
+		
+			if (Common.VIEW_TYPE.equals(request.getParameter(Common.VIEW))) {
+				// HTML visual interface
+				processVIEWRequest(request, response);
+				
+	
+			} else {// invoked as a service
+				processRequest(request, response);
+		    }
+		}
 	}
 
 	/**
@@ -208,13 +240,16 @@ public class QueryBean extends HttpServlet {
 				    
 				    out.flush();
 				    
-				} else if ("map".equals(handle) && 
+				} else if (("map".equals(handle) || "map_local".equals(handle)) && 
 						(queryResultFormat == stSPARQLQueryResultFormat.KML || 
 						 queryResultFormat == stSPARQLQueryResultFormat.KMZ) ) {
 					// show map (only valid for KML/KMZ)
 					
 					// get dispatcher
 					dispatcher = request.getRequestDispatcher("query.jsp");
+					
+					// re-assign handle
+					request.setAttribute("handle", handle);
 					
 					SecureRandom random = new SecureRandom();
 					String temp = new BigInteger(130, random).toString(32);
@@ -272,7 +307,11 @@ public class QueryBean extends HttpServlet {
 					
 					try {
 						strabonWrapper.query(query, format, bos);
-						request.setAttribute(RESPONSE, StringEscapeUtils.escapeHtml(bos.toString()));
+						if (format.equals(Common.getHTMLFormat())) {
+							request.setAttribute(RESPONSE, bos.toString());
+						} else {
+							request.setAttribute(RESPONSE, StringEscapeUtils.escapeHtml(bos.toString()));
+						}
 						
 					} catch (Exception e) {
 						logger.error("[StrabonEndpoint.QueryBean] Error during querying.", e);
