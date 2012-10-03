@@ -63,161 +63,7 @@
 		});
 	});
 </script>
-<%
-	if (request.getAttribute("pathToKML") != null) {
-	if ("map_local".equals(request.getAttribute("handle"))) {
-%>
-	<script type="text/javascript" src="js/geoxml3-kmz.js"></script>
-	<script type="text/javascript" src="js/ProjectedOverlay.js"></script>	
 	<%
-			}
-		%>
-	<link href="http://code.google.com/apis/maps/documentation/javascript/examples/default.css" rel="stylesheet" type="text/css" />
-	<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
-	<script type="text/javascript">
-		function initialize() {
-			// center at Brahames
-			var brahames = new google.maps.LatLng(37.92253, 23.72275);
-			var myOptions = {
-				zoom: 11,
-				center: brahames,
-				mapTypeId: google.maps.MapTypeId.ROADMAP
-			};
-			
-			// get KML filename
-			var kml = '<%=request.getAttribute("pathToKML")%>';
-			// create map
-			var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
-		
-			// display using geoxml3
-		<%if ("map_local".equals(request.getAttribute("handle"))) {%>
-			var myParser = new geoXML3.parser({map: map});
-			myParser.parse(kml);
-			
-		<%} else {%>
-			var ctaLayer = new google.maps.KmlLayer(kml);
-			ctaLayer.setMap(map);
-		<%}%>
-		}
-	</script> 
-<%
- 	}
- %>
- 	<!-- jQuery start  -->
-	<link type="text/css" href="style-menu.css" rel="stylesheet" />
-	<script type="text/javascript" src="js/jquery-1.8.0.min.js"></script>
-	<script type="text/javascript" src="js/jquery-ui-1.8.23.custom.min.js"></script>
-	<script type="text/javascript">
-	$(function(){
-			// Accordion
-			$("#accordion").accordion({ 
-				header: "h3",
-				fillSpace: true
-			});
-			//hover states on the static widgets
-			$('#dialog_link, ul#icons li').hover(
-				function() { $(this).addClass('ui-state-hover'); },
-				function() { $(this).removeClass('ui-state-hover'); }
-			);
-	});
-	</script>
-	<style type="text/css">
-		/*demo page css*/
-		body{ font: 90% "Trebuchet MS", sans-serif; margin: 50px;}
-		.container { height:700px; width:165px;}
-		.demoHeaders { margin-top: 1em;}
-		#dialog_link {padding: .4em 1em .4em 20px;text-decoration: none;position: relative;}
-		#dialog_link span.ui-icon {margin: 0 5px 0 0;position: absolute;left: .2em;top: 50%;margin-top: -8px;}
-		ul#icons {margin: 0; padding: 0;}
-		ul#icons li {margin: 1px; position: relative; padding: 1px 0; cursor: pointer; float: left;  list-style: none;}
-		ul#icons span.ui-icon {float: left; margin: 0 1px;}
-	</style>
- 	<!-- jQuery end -->
- 
-	<title>TELEIOS: Strabon Endpoint</title>
-</head>
-<body topmargin="0" leftmargin="0" link="#FFFFFF" vlink="#FFFFFF" alink="#FFFFFF" onload="initialize()">
-
-<!-- include TELEIOS header and description -->
-<%@ include file="teleios-header.html"%>
-<!-- include TELEIOS header and description -->
-
-<FORM enctype="UTF-8" accept-charset="UTF-8" method="post" action="Query">
-<INPUT type=hidden name="view" value="HTML"/>
-
-<table border="0" width="100%">
-<tr> 
-	<td width="90" valign="top" bgcolor="#dfe8f0"> 
-		<table border="0" cellspacing="0" cellpadding="0" width="165">  
-		<tr><td id="twidth">
-		<div class="container">
-		<div id="accordion">
-		<%
-					StrabonBeanWrapper strabonWrapper;
-							ServletContext context;
-							context = getServletContext();
-							WebApplicationContext applicationContext = WebApplicationContextUtils.getWebApplicationContext(context);
-							strabonWrapper=(StrabonBeanWrapper) applicationContext.getBean("strabonBean");
-							
-							Iterator <StrabonBeanWrapperConfiguration> entryListIterator = strabonWrapper.getEntries().iterator();
-							boolean first = true;
-							while(entryListIterator.hasNext())
-							{
-								StrabonBeanWrapperConfiguration entry = entryListIterator.next();
-								
-								if (entry.isHeader()) {
-									if (!first) {
-										%>
-										</div></div>
-										<%
-									} else {
-										first = false;
-									}
-									
-									String label=entry.getLabel();
-									String bean=entry.getBean();
-									String style = "";
-									if (bean == null) {
-										bean = "#";
-									} else {
-										style = "class=\"navText\"";
-									}
-									%>
-									<div><h3><a <%=style%> href="<%=bean%>"><%=label%></a></h3><div>
-									<%
-								} else {
-									String href="\""+URLEncoder.encode(entry.getBean(),"utf-8")+"?view=HTML&handle="+entry.getHandle()+"&query="+URLEncoder.encode(entry.getStatement(),"utf-8")+"&format="+URLEncoder.encode(entry.getFormat(),"utf-8")+"\"";
-									String title="\""+entry.getTitle()+"\"";
-									String label=entry.getLabel();
-				%>
-					<b>&middot;</b>&nbsp;<a class="linkText" href=<%=href%> title=<%=title%>><%=label%></a><br/>
-		<%
-			
-								}
-							}
-		%>
-		</div>
-		</div>
-	</td>
-</tr>
-<!-- 
-<tr><td width="90" class="style4"><a href="describe.jsp" class="navText">Describe</a></td></tr>
-<tr><td width="90" class="style4"><a href="store.jsp" class="navText" title="Store triples">Store</a></td></tr>
- --> 
-</table>
-</td>
-<td width="*" valign="top" >
-<table cellspacing="5">
-<%if (request.getAttribute("info") != null) { %>
-	<!-- Info Message -->
-  		<TR><TD colspan=2>
-  		<CENTER><P><%=request.getAttribute("info") %></P></CENTER>
-  		</TD></TR>
-	<!-- Info Message -->
-<%}%>
-<tr>
-<td id="output">stSPARQL Query:</td>
-<%
 	// get query parameter or attribute (the attribute comes from ConnectionBean)
 	String query = "";
 	if (request.getParameter("query") != null) {
@@ -251,7 +97,186 @@
 		handle = (String) request.getAttribute("handle");
 		
 	}
+
+	if (request.getAttribute("pathToKML") != null) {
+	if ("map_local".equals(request.getAttribute("handle"))) {
 %>
+	<script type="text/javascript" src="js/geoxml3-kmz.js"></script>
+	<script type="text/javascript" src="js/ProjectedOverlay.js"></script>	
+<%
+	}
+%>
+	<link href="http://code.google.com/apis/maps/documentation/javascript/examples/default.css" rel="stylesheet" type="text/css" />
+	<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
+	<script type="text/javascript">
+		function initialize() {
+			// center at Brahames
+			var brahames = new google.maps.LatLng(37.92253, 23.72275);
+			var myOptions = {
+				zoom: 11,
+				center: brahames,
+				mapTypeId: google.maps.MapTypeId.ROADMAP
+			};
+			
+			// get KML filename
+			var kml = '<%=request.getAttribute("pathToKML")%>';
+			// create map
+			var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+		
+			// display using geoxml3
+		<%if ("map_local".equals(request.getAttribute("handle"))) {%>
+			var myParser = new geoXML3.parser({map: map});
+			myParser.parse(kml);
+			
+		<%} else {%>
+			var ctaLayer = new google.maps.KmlLayer(kml);
+			ctaLayer.setMap(map);
+		<%}%>
+		
+		<%if ("map".equals(request.getAttribute("handle")) || "map_local".equals(request.getAttribute("handle"))) {%>	
+			$('html, body').animate({
+				scrollTop: $("#divResultsStart").offset().top
+			}, 1500);
+		<%}%>
+		}
+	</script>
+	<%	} else { %>
+ 	<script type="text/javascript">
+		function initialize() {
+	<%	
+	if (query != "" || selFormat != "" || handle != "") {
+	%>
+	$('html, body').animate({
+		scrollTop: $("#divResultsStart").offset().top
+	}, 1000);
+	<%}%>
+		}
+	</script>
+	<%}%>
+
+ 	<!-- jQuery start  -->
+	<link type="text/css" href="style-menu.css" rel="stylesheet" />
+	<script type="text/javascript" src="js/jquery-1.8.0.min.js"></script>
+	<script type="text/javascript" src="js/jquery-ui-1.8.23.custom.min.js"></script>
+	<script type="text/javascript">
+	$(function(){
+			// Accordion
+			$("#accordion").accordion({ 
+				header: "h3",
+				fillSpace: true,
+				navigation: true,
+				collapsible: true
+			});
+			//hover states on the static widgets
+			$('#dialog_link, ul#icons li').hover(
+				function() { $(this).addClass('ui-state-hover'); },
+				function() { $(this).removeClass('ui-state-hover'); }
+			);
+	});
+	</script>
+	<style type="text/css">
+		/*demo page css*/
+		body{ font: 90% "Trebuchet MS", sans-serif; margin: 50px;}
+		.container { height:410px; width:165px;}
+		.demoHeaders { margin-top: 1em;}
+		#dialog_link {padding: .4em 1em .4em 20px;text-decoration: none;position: relative;}
+		#dialog_link span.ui-icon {margin: 0 5px 0 0;position: absolute;left: .2em;top: 50%;margin-top: -8px;}
+		ul#icons {margin: 0; padding: 0;}
+		ul#icons li {margin: 1px; position: relative; padding: 1px 0; cursor: pointer; float: left;  list-style: none;}
+		ul#icons span.ui-icon {float: left; margin: 0 1px;}
+	</style>
+ 	<!-- jQuery end -->
+ 
+	<title>TELEIOS: Strabon Endpoint</title>
+</head>
+<body topmargin="0" leftmargin="0" link="#FFFFFF" vlink="#FFFFFF" alink="#FFFFFF" onload="initialize()">
+
+<!-- include TELEIOS header and description -->
+<%@ include file="teleios-header.html"%>
+<!-- include TELEIOS header and description -->
+
+<FORM enctype="UTF-8" accept-charset="UTF-8" method="post" action="Query">
+<INPUT type=hidden name="view" value="HTML"/>
+
+<table border="0" width="100%">
+<tr> 
+	<td width="90" valign="top"> 
+		<table border="0" cellspacing="0" cellpadding="0" width="165">  
+		<tr><td id="twidth">
+		<div class="container">
+		<div id="accordion">
+		<%
+					StrabonBeanWrapper strabonWrapper;
+							ServletContext context;
+							context = getServletContext();
+							WebApplicationContext applicationContext = WebApplicationContextUtils.getWebApplicationContext(context);
+							strabonWrapper=(StrabonBeanWrapper) applicationContext.getBean("strabonBean");
+							
+							Iterator <StrabonBeanWrapperConfiguration> entryListIterator = strabonWrapper.getEntries().iterator();
+							boolean first = true;
+							String hash = "";
+							while(entryListIterator.hasNext())
+							{
+								StrabonBeanWrapperConfiguration entry = entryListIterator.next();
+								
+								if (entry.isHeader()) {
+									if (!first) {
+										%>
+										</div></div>
+										<%
+									} else {
+										first = false;
+									}
+									
+									String label=entry.getLabel();
+									String style = "", href = "";
+									hash = new Integer(Math.abs(label.hashCode())).toString();
+									href="href=\"#"+hash+"\"";									
+									%>
+									<div><h3><a <%=style%> <%=href%>><%=label%></a></h3><div>
+									<%									
+								} else if (entry.isBean()) {
+									String label=entry.getLabel();
+									String bean=entry.getBean();
+									String style = "", href = "";
+									hash = new Integer(Math.abs(label.hashCode()*bean.hashCode())).toString();
+									href = "\"" +bean + "#"+ hash+"\"";
+									style = "class=\"navText\"";
+									%>
+									<b>&middot;</b>&nbsp;<a class="linkText" href=<%=href%>><%=label%></a><br/>
+									<%
+								} else {
+									String href="\""+URLEncoder.encode(entry.getBean(),"utf-8")+"?view=HTML&handle="+entry.getHandle()+"&query="+URLEncoder.encode(entry.getStatement(),"utf-8")+"&format="+URLEncoder.encode(entry.getFormat(),"utf-8")+(hash == "" ? "" : "#" + hash)+"\"";
+									String title="\""+entry.getTitle()+"\"";
+									String label=entry.getLabel();
+									%>
+									<b>&middot;</b>&nbsp;<a class="linkText" href=<%=href%> title=<%=title%>><%=label%></a><br/>
+									<%
+			
+								}
+							}
+		%>
+		</div>
+		</div>
+	</td>
+</tr>
+<!-- 
+<tr><td width="90" class="style4"><a href="describe.jsp" class="navText">Describe</a></td></tr>
+<tr><td width="90" class="style4"><a href="store.jsp" class="navText" title="Store triples">Store</a></td></tr>
+ --> 
+</table>
+</td>
+<td width="*" valign="top" >
+<table cellspacing="5">
+<%if (request.getAttribute("info") != null) { %>
+	<!-- Info Message -->
+  		<TR><TD colspan=2>
+  		<CENTER><P><%=request.getAttribute("info") %></P></CENTER>
+  		</TD></TR>
+	<!-- Info Message -->
+<%}%>
+<tr>
+<td id="output">stSPARQL Query:</td>
 <td id="output"><textarea name="query" title="pose your query/update here" rows="15" cols="100"><%=query%></textarea></td>
 </tr>
 <tr>
@@ -287,6 +312,8 @@
 <%}%>
 </table></td></tr></table><br/><br/>
 </form>
+<a name="#results">&nbsp;</a>
+<div id="divResultsStart"></div>
 	<!-- Response -->
 <% if (request.getAttribute("response") != null) {
 	if (Common.getHTMLFormat().equals(request.getParameter("format"))) {%>
@@ -299,5 +326,6 @@
 <% if (request.getAttribute("pathToKML") != null) { %>
 	<div id="map_canvas"></div>
 <%}%>
+<div id="divResultsEnd" style="height: 1px; width 1px"></div>
 </body>
 </html>
