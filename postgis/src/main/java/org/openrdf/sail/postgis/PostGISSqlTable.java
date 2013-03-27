@@ -40,9 +40,16 @@ public class PostGISSqlTable extends GeneralDBSqlTable {
 	}
 	
 	@Override
-	public String buildIndexOnGeometryCollumn() {
-		return "CREATE INDEX geoindex ON geo_values USING GIST (strdfgeo)";
+	public String buildIndexOnPeriodColumn() {
+		//return "CREATE INDEX geoindex ON geo_values USING GIST (strdfgeo)";
+		return "CREATE INDEX test_period_idx ON period_values USING GiST (period)";
 	}
+	
+	@Override
+	public String buildInsertPeriodValue() {
+		return " (id, period) VALUES (?,period_in(textout(?)))";
+	}
+	
 	
 	@Override
 	public String buildInsertGeometryValue() {
@@ -79,5 +86,17 @@ public class PostGISSqlTable extends GeneralDBSqlTable {
 	@Override
 	public String buildWhere() {
 		return " WHERE (1=1) ";
+	}
+
+	@Override
+	public String buildPeriodCollumn() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String buildIndexOnGeometryCollumn() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

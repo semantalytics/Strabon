@@ -82,7 +82,7 @@ BASE_MEMORY=1024
 MORE_MEMORY="-Xms512M -Xmx1024M"
 
 # much more memory
-MMORE_MEMORY="-Xms512M -Xmx1536M"
+MMORE_MEMORY="-Xms8192M -Xmx16384M"
 
 # flag for not setting the memory limit more than once
 MEMORY_INCREASED=false
@@ -176,7 +176,7 @@ function help_store() {
 	echo 
 	echo "OPTIONS can be one of the following"
 	echo "	-f FORMAT : the RDF format of the files to store. The format can be one of the following:"
-	echo "		    \`ntriples' (default), \`n3', \`rdfxml', or \`turtle'."
+	echo "		    \`ntriples' (default), \`n3', \`rdfxml', \`turtle', or \`nquads'."
 	echo "	-g NAMED_GRAPH : the URI of the named graph into which the RDF files shall be stored"
 	echo "	                 (defaults to the default graph)."
 }
@@ -505,12 +505,12 @@ case "${1}" in
 			if test "${1}" = "-f"; then
 				shift
 				if ! test $# -ge 1; then
-					echo "${CMD}: Option -f requires an RDF format (\`ntriples', \`n3', \`rdfxml', or \`turtle')"
+					echo "${CMD}: Option -f requires an RDF format (\`ntriples', \`n3', \`rdfxml', \`turtle', or \`nquads')"
 					exit 2
 				else
 					FORMAT="${1}"
 					case "${FORMAT}" in
-						[nN][tT][rR][iI][pP][lL][eE][sS]|[nN]3|[rR][dD][fF][xX][mM][lL]|[tT][uU][rR][tT][lL][eE])
+						[nN][tT][rR][iI][pP][lL][eE][sS]|[nN]3|[rR][dD][fF][xX][mM][lL]|[tT][uU][rR][tT][lL][eE]|[nN][qQ][uU][aA][dD][sS])
 							shift
 							;;
 						*)

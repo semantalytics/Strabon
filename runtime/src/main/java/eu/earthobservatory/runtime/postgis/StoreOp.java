@@ -68,6 +68,7 @@ public class StoreOp {
 			strabon = new Strabon(db, user, passwd, port, host, false);
 			if (graph == null) {
 				strabon.storeInRepo(src, format);
+			System.out.println("STORED");
 				
 			} else {
 				strabon.storeInRepo(src, null, graph, format);
