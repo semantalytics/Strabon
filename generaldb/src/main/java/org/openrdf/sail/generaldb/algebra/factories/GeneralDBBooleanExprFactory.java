@@ -48,6 +48,27 @@ import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.construct.
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.construct.UnionFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.metric.AreaFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.RelateFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodEndsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodIntersectionFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodMinusFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodStartsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.TemporalConstructFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.periodUnionFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.AdjacentPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.AfterPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.BeforePeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.EqualsPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.MeetsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.NequalsPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.OverleftPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.OverrightPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.PeriodContainedByFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.PeriodContainsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.TemporalConstants;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.TemporalRelationFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.finishesFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.periodOverlapsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.startsFunc;
 import org.openrdf.query.algebra.helpers.QueryModelVisitorBase;
 import org.openrdf.sail.generaldb.algebra.GeneralDBFalseValue;
 import org.openrdf.sail.generaldb.algebra.GeneralDBRefIdColumn;
@@ -701,6 +722,35 @@ public class GeneralDBBooleanExprFactory extends QueryModelVisitorBase<Unsupport
 
 			result = spatialMetricPicker(function, leftArg, rightArg);
 		}
+		else if(function instanceof TemporalRelationFunc)
+		{
+			ValueExpr left = functionCall.getArgs().get(0);
+			ValueExpr right = functionCall.getArgs().get(1);
+
+
+			GeneralDBSqlExpr leftArg = null;
+			GeneralDBSqlExpr rightArg = null;
+			GeneralDBSqlExpr thirdArg = null;
+
+			if(left instanceof FunctionCall)
+			{
+				leftArg = temporalFunction((FunctionCall) left);
+			}
+			else
+			{
+				leftArg = label(left);
+			}
+
+			if(right instanceof FunctionCall)
+			{
+				rightArg = temporalFunction((FunctionCall) right);
+			}
+			else
+			{
+				rightArg = label(right);
+			}
+			result = temporalRelationPicker(function, leftArg, rightArg, thirdArg);
+		}
 		else //default case
 		{
 			meetNode(functionCall);
@@ -747,7 +797,87 @@ public class GeneralDBBooleanExprFactory extends QueryModelVisitorBase<Unsupport
 		}
 		return null;
 	}
+	
+	public GeneralDBSqlExpr temporalFunction(FunctionCall functionCall) throws UnsupportedRdbmsOperatorException
+	{
+		Function function = FunctionRegistry.getInstance().get(functionCall.getURI());
+		//FIXME more cases to be added later. E.g, for the temporal construct functions and temporal metric functions
+		if(function instanceof SpatialRelationshipFunc)
+		{
+			return temporalRelationFunction(functionCall,function);	
+		}
+		else if(function instanceof TemporalConstructFunc) //copied behaviour to capture the temporal cases
+		{
+			return temporalConstructFunction(functionCall,function);
+		}
+		
+		return null;
+	}
+	
+	GeneralDBSqlExpr temporalConstructFunction(FunctionCall functionCall, Function function) throws UnsupportedRdbmsOperatorException
+	{
 
+		GeneralDBSqlExpr leftArg = null;
+		GeneralDBSqlExpr rightArg = null;
+
+		ValueExpr left = functionCall.getArgs().get(0);
+
+
+		if(left instanceof FunctionCall)
+		{
+			leftArg = temporalFunction((FunctionCall) left);
+		}
+		else
+		{
+			leftArg = label(left);
+		}
+
+		if(!( functionCall.getArgs().size()==1))
+		{
+			ValueExpr right = functionCall.getArgs().get(1);
+			if(right instanceof FunctionCall)
+			{
+				rightArg = temporalFunction((FunctionCall) right);
+			}
+			else
+			{
+				rightArg = label(right);
+			}
+		}
+
+		return temporalConstructPicker(function, leftArg, rightArg);
+
+	}
+	GeneralDBSqlExpr temporalRelationFunction(FunctionCall functionCall, Function function) throws UnsupportedRdbmsOperatorException
+	{
+		ValueExpr left = functionCall.getArgs().get(0);
+		ValueExpr right = functionCall.getArgs().get(1);
+
+
+		GeneralDBSqlExpr leftArg = null;
+		GeneralDBSqlExpr rightArg = null;
+		GeneralDBSqlExpr thirdArg = null;
+
+		if(left instanceof FunctionCall)
+		{
+			leftArg = temporalFunction((FunctionCall) left);
+		}
+		else
+		{
+			leftArg = label(left);
+		}
+
+		if(right instanceof FunctionCall)
+		{
+			rightArg = temporalFunction((FunctionCall) right);
+		}
+		else
+		{
+			rightArg = label(right);
+		}
+
+		return temporalRelationPicker(function, leftArg, rightArg, thirdArg);
+	}
 
 	GeneralDBSqlExpr spatialRelationshipFunction(FunctionCall functionCall, Function function) throws UnsupportedRdbmsOperatorException
 	{
@@ -941,7 +1071,94 @@ public class GeneralDBBooleanExprFactory extends QueryModelVisitorBase<Unsupport
 		return spatialPropertyPicker(function, expr);
 
 	}
-
+	
+	GeneralDBSqlExpr temporalConstructPicker(Function function,GeneralDBSqlExpr leftArg, GeneralDBSqlExpr rightArg)
+	{
+		if(function instanceof PeriodIntersectionFunc)
+		{
+			return periodIntersection(leftArg, rightArg);
+		}
+		else if(function instanceof periodUnionFunc)
+		{
+			return periodUnion(leftArg, rightArg);
+		}
+		else if(function instanceof PeriodMinusFunc)
+		{
+			return periodMinus(leftArg, rightArg);
+		}
+		else if(function instanceof PeriodStartsFunc)
+		{
+			return periodStart(leftArg);
+		}
+		else if(function instanceof PeriodEndsFunc)
+		{
+			return periodEnd(leftArg);
+		}
+		else
+			return null;
+	}
+	
+	GeneralDBSqlExpr temporalRelationPicker(Function function,GeneralDBSqlExpr leftArg, GeneralDBSqlExpr rightArg, 
+			GeneralDBSqlExpr thirdArg)
+	{
+		if(function instanceof AfterPeriodFunc)
+		{
+			return afterPeriod(leftArg, rightArg);
+		}
+		else if(function instanceof BeforePeriodFunc)
+		{
+			return beforePeriod(leftArg, rightArg);
+		}
+		else if(function instanceof OverleftPeriodFunc)
+		{
+			return overleftPeriod(leftArg, rightArg);
+		}
+		else if(function instanceof OverrightPeriodFunc)
+		{
+			return overrightPeriod(leftArg, rightArg);
+		}
+		else if(function instanceof EqualsPeriodFunc)
+		{
+			return equalsPeriod(leftArg, rightArg);
+		}
+		else if(function instanceof NequalsPeriodFunc)
+		{
+			return nequalsPeriod(leftArg, rightArg);
+		}
+		else if(function instanceof PeriodContainsFunc)
+		{
+			return periodContains(leftArg, rightArg);
+		}
+		else if(function instanceof PeriodContainedByFunc)
+		{
+			return periodContainedBy(leftArg, rightArg);
+		}
+		else if(function instanceof periodOverlapsFunc)
+		{
+			return periodOverlaps(leftArg, rightArg);
+		}
+		else if(function instanceof MeetsFunc)
+		{
+			return meets(leftArg, rightArg);
+		}
+		else if(function instanceof startsFunc)
+		{
+			return starts(leftArg, rightArg);
+		}
+		else if(function instanceof finishesFunc)
+		{
+			return finishes(leftArg, rightArg);
+		}
+		else if(function instanceof AdjacentPeriodFunc)
+		{
+			return adjacent(leftArg, rightArg);
+		}
+		else 
+		{
+			return null;
+		}
+	}
+	
 	GeneralDBSqlExpr spatialRelationshipPicker(Function function,GeneralDBSqlExpr leftArg, GeneralDBSqlExpr rightArg, 
 			GeneralDBSqlExpr thirdArg)
 	{
@@ -1015,6 +1232,39 @@ public class GeneralDBBooleanExprFactory extends QueryModelVisitorBase<Unsupport
 		else if(function.getURI().equals(GeoConstants.mbbEquals))
 		{
 			return mbbEqualsGeo(leftArg,rightArg);
+		}
+		//stSPARQL temporal functions
+		else if(function.getURI().equals(TemporalConstants.after))
+		{
+			return afterPeriod(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.before))
+		{
+			return beforePeriod(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.periodContains))
+		{
+			return periodContains(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.periodOverlaps))
+		{
+			return periodOverlaps(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.adjacent))
+		{
+			return adjacent(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.meets))
+		{
+			return meets(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.starts))
+		{
+			return starts(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.finishes))
+		{
+			return finishes(leftArg,rightArg);
 		}
 		//XXX GeoSPARQL
 		//Simple Features
