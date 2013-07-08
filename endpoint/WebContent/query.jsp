@@ -5,6 +5,7 @@
 <%@page import="eu.earthobservatory.org.StrabonEndpoint.StrabonBeanWrapper"%>
 <%@page import="eu.earthobservatory.org.StrabonEndpoint.StrabonBeanWrapperConfiguration"%>
 <%@page import="java.util.List"%>
+<%@page import="java.util.ArrayList"%>
 <%@page import="java.util.Iterator"%>
 <%@page import="org.openrdf.query.TupleQueryResult"%>
 <%@page import="org.openrdf.query.BindingSet"%>
@@ -68,9 +69,9 @@
 	<%
 	// get the reference to StrabonBeanWrapper
 	StrabonBeanWrapper strabonWrapper;
-	String label1= "placeholder";
-	String label2= "placeholder";
-	TupleQueryResult result = null;
+	//String arr = new String[2];
+	List<String[]> results = new ArrayList<String[]>();
+	String[] arr = new String[2];
 	
 	ServletContext context;
 	context = getServletContext();
@@ -210,6 +211,8 @@
       // Load the Visualization API and the piechart package.
       google.load('visualization', '1.0', {'packages':['corechart']});
 
+      google.setOnLoadCallback(drawChart);
+
       // Set a callback to run when the Google Visualization API is loaded.
 
    		google.setOnLoadCallback(drawChart);
@@ -231,17 +234,19 @@
  		
         // Create the data table.
         var data = new google.visualization.DataTable();
-        
-     
-        data.addColumn('string', <%=label1%>.);
-        data.addColumn('number', <%=label2%>);
-     
+        <% if (request.getAttribute("response") != null) {
+        	if (request.getParameter("format").equals("CHART")) {
+        		 results= (List<String[]>)request.getAttribute("response");
+        		arr[0] = results.get(0)[0];
+        		arr[0] = results.get(0)[1];	
+        	%>
         <%
-        while(result.hasNext()){
-        BindingSet bindings = result.next();
-        %>	data.addRow('string', <%=bindings.getValue(label1).toString()%>); 
-        	data.addRow('number', <%=Integer.parseInt(bindings.getValue(label2).toString())%>);
-        <% } %>
+        int i=1;
+        while(i <= results.size()){
+        	arr =  results.get(i);
+        %>	
+  
+        <% i++;} %>
         // Set chart options
         var options = {'title':'Displaying results in chart',
                        'width':400,
