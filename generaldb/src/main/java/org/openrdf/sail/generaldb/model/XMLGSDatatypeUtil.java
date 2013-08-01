@@ -19,6 +19,7 @@ import org.openrdf.model.vocabulary.XMLSchema;
 import org.openrdf.sail.generaldb.model.GeneralDBPolyhedron;
 
 import eu.earthobservatory.constants.GeoConstants;
+import eu.earthobservatory.constants.TemporalConstants;
 
 
 
@@ -47,6 +48,9 @@ public class XMLGSDatatypeUtil {
 	 * @param value
 	 * @return
 	 * @author Charalampos Nikolaou <charniK@di.uoa.gr>
+	 * 
+	 * @author Konstantina Bereta <Konstantina.Bereta@di.uoa.gr>
+	 * added period datatype validator as well for storing valid time period literals
 	 */
 	public static boolean isGeometryValue(Value value) {
 		if (value instanceof Literal) {
@@ -113,6 +117,21 @@ public class XMLGSDatatypeUtil {
 		}
 	
 		return GeoConstants.GML.equals(datatype.stringValue());
+	}
+	
+	/**
+	 * Checks whether the supplied datatype is actually a GML literal.
+	 * 
+	 * @param datatype
+	 * @return
+	 */
+	public static boolean isPeriodDatatype(URI datatype)
+	{
+		if(datatype == null) {
+			return false;
+		}
+	
+		return TemporalConstants.PERIOD.equals(datatype.stringValue());
 	}
 	
 	/**

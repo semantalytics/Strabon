@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>eu.earthobservatory</groupId>
 		<artifactId>strabon</artifactId>
-		<version>3.2.9-SNAPSHOT</version>
+		<version>3.2.8-temporals-SNAPSHOT</version>
 	</parent>
 
 	<groupId>org.openrdf.sesame</groupId>
@@ -72,6 +72,13 @@
 	<groupId>com.sun.xml.bind</groupId>
 	<artifactId>jaxb-impl</artifactId>
 </dependency>
+		<dependency>
+			<groupId>jtemporal</groupId>
+			<artifactId>jtemporal</artifactId>
+			<version>1.0</version>
+			<scope>system</scope>
+			<systemPath>${basedir}/lib/jtemporal.jar</systemPath>
+		</dependency>
 	</dependencies>
 	<modules>
 	</modules>
