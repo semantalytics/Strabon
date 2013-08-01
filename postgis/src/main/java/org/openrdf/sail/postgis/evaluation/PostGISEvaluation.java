@@ -81,7 +81,8 @@ public class PostGISEvaluation extends GeneralDBEvaluation {
 				//XXX addition
 				result.setGeoNames(this.geoNames);
 				result.setConstructIndexesAndNames(this.constructIndexesAndNames);
-				
+				//XXX addition- constant
+				result.setTemporalVars(this.temporalVars);
 				return result;
 			}
 			catch (SQLException e) {

@@ -11,6 +11,7 @@ package org.openrdf.sail.generaldb.evaluation;
 
 import info.aduna.iteration.CloseableIteration;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -44,7 +45,10 @@ import org.openrdf.query.algebra.evaluation.function.Function;
 import org.openrdf.query.algebra.evaluation.function.FunctionRegistry;
 import org.openrdf.query.algebra.evaluation.function.spatial.SpatialConstructFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.SpatialRelationshipFunc;
+import org.openrdf.query.algebra.evaluation.function.spatial.StrabonInstant;
+import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPeriod;
 import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
+import org.openrdf.query.algebra.evaluation.function.spatial.StrabonTemporalElement;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.AboveFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.BelowFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.ContainsFunc;
@@ -61,6 +65,9 @@ import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.m
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.mbb.MbbEqualsFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.mbb.MbbIntersectsFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.mbb.MbbWithinFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.TemporalConstructFunc;
+import eu.earthobservatory.constants.TemporalConstants;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.TemporalRelationFunc;
 import org.openrdf.query.algebra.evaluation.impl.EvaluationStrategyImpl;
 import org.openrdf.query.algebra.evaluation.iterator.OrderIterator;
 import org.openrdf.query.algebra.evaluation.iterator.StSPARQLGroupIterator;
@@ -97,7 +104,8 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSqlSpatialMetricUnary;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlSpatialProperty;
 import org.openrdf.sail.generaldb.algebra.GeneralDBURIColumn;
 import org.openrdf.sail.generaldb.algebra.base.GeneralDBSqlExpr;
-import org.openrdf.sail.generaldb.exceptions.UnsupportedExtensionFunctionException;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlTemporalConstructBinary;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlTemporalConstructUnary;
 import org.openrdf.sail.generaldb.model.GeneralDBPolyhedron;
 import org.openrdf.sail.generaldb.schema.IdSequence;
 import org.openrdf.sail.generaldb.util.StSPARQLValueComparator;
@@ -108,6 +116,8 @@ import org.openrdf.sail.rdbms.model.RdbmsLiteral;
 import org.openrdf.sail.rdbms.model.RdbmsURI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.openrdf.sail.generaldb.exceptions.UnsupportedExtensionFunctionException;
+
 
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -132,23 +142,26 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 	protected IdSequence ids;
 
 	protected HashMap<Integer,String> geoNames = new HashMap<Integer,String>();
-
+	
 	protected List<GeneralDBSqlExpr> thematicExpressions = new ArrayList<GeneralDBSqlExpr>(5);
 	
 	/**
 	 * Enumeration of the possible types of the results of spatial functions.
 	 * A <tt>NULL</tt> result type is to be interpreted as error.   
 	 */ 
-	public enum ResultType { INTEGER, STRING, BOOLEAN, WKT, WKTLITERAL, DOUBLE, NULL};
+	public enum ResultType { INTEGER, STRING, BOOLEAN, WKB, DOUBLE, PERIOD,INSTANT, NULL,  WKT, WKTLITERAL};
 
+	
 	//used to retrieve the appropriate column in the Binding Iteration
 	protected HashMap<GeneralDBSpatialFuncInfo, Integer> constructIndexesAndNames = new HashMap<GeneralDBSpatialFuncInfo, Integer>();
 	//private HashMap<String, Integer> constructIndexesAndNames = new HashMap<String, Integer>();
 	//	private HashMap<String, Integer> metricIndexesAndNames = new HashMap<String, Integer>();
 	//	private HashMap<String, Integer> intPropertiesIndexesAndNames = new HashMap<String, Integer>();
 	//	private HashMap<String, Integer> boolPropertiesIndexesAndNames = new HashMap<String, Integer>();
-	//	private HashMap<String, Integer> stringPropertiesIndexesAndNames = new HashMap<String, Integer>();
 
+	protected HashMap<Integer,String> temporalVars = new HashMap<Integer,String>();
+
+	
 	public GeneralDBEvaluation(GeneralDBQueryBuilderFactory factory, GeneralDBTripleRepository triples, Dataset dataset, IdSequence ids)
 	{
 		super(new GeneralDBTripleSource(triples), dataset);
@@ -202,7 +215,10 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 		{
 			var.setName(var.getName().replace("?spatial",""));
 		}
-
+		else if(var.getName().endsWith("?temporal"))
+		{
+			var.setName(var.getName().replace("?temporal",""));
+		}
 		if(var.getName().endsWith("?forGroupBy"))
 		{
 			var.setName(var.getName().replace("?forGroupBy",""));
@@ -257,7 +273,6 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 		
 		// get the first argument of the function call
 		ValueExpr left = fc.getArgs().get(0);
-
 		// evaluated first argument of function
 		Value leftResult = null;
 		
@@ -471,6 +486,13 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 
 				return funcResult ? BooleanLiteralImpl.TRUE : BooleanLiteralImpl.FALSE;
 			}
+			else if(function instanceof TemporalConstructFunc) {
+				return temporalConstructPicker(function, leftResult, rightResult);
+			}
+			else if(function instanceof TemporalRelationFunc){
+				Boolean temporalFuncResult =  temporalRelationshipPicker(function, leftResult, rightResult);
+				return temporalFuncResult ? BooleanLiteralImpl.TRUE : BooleanLiteralImpl.FALSE;
+			}
 			else {
 				//Default Sesame Behavior
 				List<ValueExpr> args = fc.getArgs();
@@ -490,6 +512,114 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 
 	}
 
+	public StrabonTemporalElement temporalConstructPicker(Function function, Value left, Value right) throws ParseException
+	{
+		//temporarily commented out the following so that they will be evaluated in postgres temporal and not in Java
+		/*
+		if(function.getURI().equals(TemporalConstants.periodUnion))
+		{
+
+			StrabonTemporalElement rightArg= null;
+			StrabonTemporalElement leftArg= null;
+			
+			if(left.toString().contains(","))
+			{
+				 leftArg= new StrabonPeriod(left.toString());
+			}
+			else
+			{
+				 leftArg = StrabonInstant.read(left.toString());
+			}
+			if(right.toString().contains(","))
+			{
+				 rightArg= new StrabonPeriod(right.toString());
+			}
+			else
+			{
+				 rightArg = StrabonInstant.read(right.toString());
+			}
+			
+			return StrabonPeriod.union(rightArg, leftArg);
+			
+		}
+		/*else if(function.getURI().equals(TemporalConstants.periodIntersection))
+		{			
+
+			StrabonTemporalElement rightArg= null;
+			StrabonTemporalElement leftArg= null;
+			
+			if(left.toString().contains(","))
+			{
+				 leftArg= new StrabonPeriod(left.toString());
+			}
+			else
+			{
+				 leftArg = StrabonInstant.read(left.toString());
+			}
+			if(right.toString().contains(","))
+			{
+				 rightArg= new StrabonPeriod(right.toString());
+			}
+			else
+			{
+				 rightArg = StrabonInstant.read(right.toString());
+			}
+			return StrabonPeriod.intersection(rightArg, leftArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.minusPeriod))
+		{ //this functions takes only periods as arguments
+			if(!right.toString().contains(",") || !left.toString().contains(","))
+				return null;
+			return StrabonPeriod.except(new StrabonPeriod(left.toString()), new StrabonPeriod(right.toString()));
+		}
+		else if(function.getURI().equals(TemporalConstants.precedingPeriod))
+		{
+			if(!right.toString().contains(",") || !left.toString().contains(","))
+				return null;
+			return StrabonPeriod.precedingPeriod(new StrabonPeriod(left.toString()), new StrabonPeriod(right.toString()));
+		}
+		else if(function.getURI().equals(TemporalConstants.succedingPeriod))
+		{
+			if(!right.toString().contains(",") || !left.toString().contains(","))
+				return null;
+			return StrabonPeriod.succedingPeriod(new StrabonPeriod(left.toString()), new StrabonPeriod(right.toString()));
+		}
+		else if(function.getURI().equals(TemporalConstants.PERIOD))
+		{ //constracting a new period given two dateTime values
+			if(left.toString().contains(",") || right.toString().contains(","))
+				return null;
+			return new StrabonPeriod(left.toString(), right.toString());
+		}
+		else
+		{
+			return null;			
+		}*/
+		return null;
+	}
+	
+	public boolean temporalRelationshipPicker (Function function, Value left, Value right) throws ParseException
+	{
+		if(function.getURI().equals(TemporalConstants.adjacent))
+		{
+			return StrabonPeriod.meets(new StrabonPeriod(left.toString()), new StrabonPeriod(right.toString()));
+		}
+		else if(function.getURI().equals(TemporalConstants.after))
+		{
+			return StrabonPeriod.succedes(new StrabonPeriod(left.toString()), new StrabonPeriod(right.toString()));
+		}
+		else if(function.getURI().equals(TemporalConstants.meetsBefore))
+		{
+			return StrabonPeriod.meetsBefore(new StrabonPeriod(left.toString()), new StrabonPeriod(right.toString()));
+		}
+		else if(function.getURI().equals(TemporalConstants.meetsAfter))
+		{
+			return StrabonPeriod.meetsAfter(new StrabonPeriod(left.toString()), new StrabonPeriod(right.toString()));
+		}
+		else
+		{
+			return false;
+		}
+	}
 	public StrabonPolyhedron spatialConstructPicker(Function function, Value left, Value right) throws Exception
 	{
 		StrabonPolyhedron leftArg = ((GeneralDBPolyhedron) left).getPolyhedron();
@@ -705,6 +835,10 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 							//I am carrying SRID too! Therefore, shifting index one more position
 							index++;
 						}
+						if(var.isTemporal()) 
+						{
+							this.temporalVars.put(var.getIndex()+1,var.getName());
+						}
 						query.select(proj.getId());
 						query.select(proj.getStringValue());
 						index += 2;
@@ -767,7 +901,6 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 					}
 					
 				}
-
 				//constructIndexesAndNames.put((String) pairs.getKey(),index++);
 				constructIndexesAndNames.put(info,index++);
 				if(increaseIndex)
@@ -776,6 +909,37 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 					//However, only in the case when the result is some geometry (e.g. not for metrics)
 					index++;
 				}
+			}
+		}
+		Iterator iter = qb.getTemporalConstructs().entrySet().iterator();
+		while (iter.hasNext()) {
+			@SuppressWarnings("rawtypes")
+			Map.Entry pairs = (Map.Entry)iter.next();
+			//System.out.println(pairs.getKey() + " = " + pairs.getValue());
+
+			//Trying to fill what's missing
+			GeneralDBSqlExpr expr = (GeneralDBSqlExpr) pairs.getValue();
+			locateColumnVars(expr,qb.getVars());
+
+			//Assuming thematic aggregates and spatial expressions won't be combined
+			if(!this.thematicExpressions.contains(expr))
+			{
+				query.construct(expr);
+				boolean increaseIndex = false;
+
+				GeneralDBSpatialFuncInfo info = null;
+				
+				ResultType type = getResultType(expr);
+				if (type == ResultType.NULL) {
+					throw new UnsupportedRdbmsOperatorException("No such temporal expression exists!");
+					
+				} else {
+					info = new GeneralDBSpatialFuncInfo((String) pairs.getKey(), type);		
+				}
+
+				constructIndexesAndNames.put(info,index++);
+				
+
 			}
 		}
 		//
@@ -793,7 +957,6 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 			query.offset(qb.getOffset());
 		}
 		parameters.addAll(query.getParameters());
-
 		return query.toString();
 	}
 
@@ -860,7 +1023,7 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 			//			GeneralDBColumnVar var = ((GeneralDBLongLabelColumn) expr).getRdbmsVar();
 			//			for(GeneralDBColumnVar reference: allKnown)
 			//			{
-			//				if(var.getName().equals(reference.getName()))
+			//				if(var.getName()-.equals(reference.getName()))
 			//				{
 			//					var = reference;
 			//				}
@@ -938,6 +1101,15 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 			locateColumnVars(((GeneralDBSqlMathExpr)expr).getLeftArg(),allKnown);
 			locateColumnVars(((GeneralDBSqlMathExpr)expr).getRightArg(),allKnown);
 		}
+		else if(expr instanceof GeneralDBSqlTemporalConstructBinary)
+		{
+			locateColumnVars(((GeneralDBSqlTemporalConstructBinary)expr).getLeftArg(),allKnown);
+			locateColumnVars(((GeneralDBSqlTemporalConstructBinary)expr).getRightArg(),allKnown);
+		}
+		else if(expr instanceof GeneralDBSqlTemporalConstructUnary)
+		{
+			locateColumnVars(((GeneralDBSqlTemporalConstructUnary)expr).getArg(),allKnown);
+		}
 		else
 		{
 			//must recurse
@@ -970,6 +1142,7 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 
 	/**
 	 * Given an expression get the type of the result. 
+	 * Extended it to take into account the temporal constructs
 	 * 
 	 * @param expr
 	 * @return
@@ -1036,6 +1209,15 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 		{
 			return ResultType.DOUBLE;
 		}
+		else if(expr instanceof GeneralDBSqlTemporalConstructBinary)
+		{
+			return ResultType.PERIOD;
+		}
+		else if(expr instanceof GeneralDBSqlTemporalConstructUnary)
+		{
+			return ResultType.INSTANT;
+		}
+		System.out.println("NOT SUPPORTED OPERATOR!!!");
 		return ResultType.NULL;//SHOULD NEVER REACH THIS CASE
 	}
 }
