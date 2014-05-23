@@ -4,7 +4,7 @@
 
 	<groupId>eu.earthobservatory</groupId>
 	<artifactId>strabon</artifactId>
-	<version>3.2.10-SNAPSHOT</version>
+	<version>3.2.10-temporals-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<parent>
@@ -140,7 +140,7 @@
 	</modules>
 
 	<properties>
-        <eu.earthobservatory.version>3.2.10-SNAPSHOT</eu.earthobservatory.version>
+        <eu.earthobservatory.version>3.2.10-temporals-SNAPSHOT</eu.earthobservatory.version>
 		<sesame.version>2.6.3</sesame.version>
 		<aduna.appbase.version>3.5.0</aduna.appbase.version>
 		<!--slf4j.version>1.5.8</slf4j.version-->
@@ -383,48 +383,60 @@
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-api</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-rdfxml</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
+			</dependency>
+			
+			
+			<dependency>
+				<groupId>org.openrdf.sesame</groupId>
+				<artifactId>sesame-rio</artifactId>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-ntriples</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-turtle</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-trig</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-trix</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-n3</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-binary</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
+			</dependency>
+			<dependency>
+				<groupId>org.openrdf.sesame</groupId>
+				<artifactId>sesame-rio-api</artifactId>
+				<version>2.6.9</version>
 			</dependency>
 
 			<!-- GeoTools -->
@@ -886,7 +898,18 @@
             <name>Strabon - maven repository - sesame artifacts (temporary)</name>
             <url>http://maven.strabon.di.uoa.gr/content/repositories/strabon.sesame/</url>
         </repository>
-		<!--
+		 <!-- 
+		 <repository>
+			<releases>
+				<enabled>true</enabled>
+			</releases>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>strabon.sesame</id>
+			<name>Strabon - maven repository - sesame artifacts (temporary)</name>
+			<url>http://maven.strabon.di.uoa.gr/content/repositories/strabon.sesame</url>
+		</repository>
 		<repository>
 			<releases>
 				<enabled>true</enabled>
@@ -909,7 +932,7 @@
 			<name>Aduna Open Source - Maven snapshots</name>
 			<url>http://repo.aduna-software.org/maven2/snapshots</url>
 		</repository>
-		-->
+		 -->
 		<repository>
 			<snapshots>
 				<enabled>true</enabled>

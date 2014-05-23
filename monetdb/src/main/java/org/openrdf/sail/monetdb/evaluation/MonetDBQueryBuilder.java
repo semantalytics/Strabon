@@ -98,6 +98,25 @@ import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Intersects;
 import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Overlaps;
 import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Touches;
 import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Within;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlAdjacentPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlAfterPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlBeforePeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlEqualsPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlFinishes;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlMeets;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlNequalsPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlOverleftPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlOverrightPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodContainedBy;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodContains;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodEnd;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodIntersection;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodIntersects;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodMinus;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodOverlaps;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodStart;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodUnion;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlStarts;
 import org.openrdf.sail.generaldb.evaluation.GeneralDBQueryBuilder;
 import org.openrdf.sail.generaldb.evaluation.GeneralDBSqlBracketBuilder;
 import org.openrdf.sail.generaldb.evaluation.GeneralDBSqlExprBuilder;
@@ -388,6 +407,7 @@ public class MonetDBQueryBuilder extends GeneralDBQueryBuilder {
 		}
 		if(expr instanceof BinaryGeneralDBOperator)
 		{
+			System.out.println("expr instanceof BinaryGeneralDBOperator");
 			dispatchBinarySqlOperator((BinaryGeneralDBOperator) expr, (MonetDBSqlExprBuilder)query.select);
 		}
 		else if(expr instanceof UnaryGeneralDBOperator)
@@ -2601,6 +2621,163 @@ public class MonetDBQueryBuilder extends GeneralDBQueryBuilder {
 	@Override
 	protected void append(GeneralDBSqlST_Centroid expr, GeneralDBSqlExprBuilder filter) throws UnsupportedRdbmsOperatorException {
 		throw new UnsupportedRdbmsOperatorException("ST_Centroid is not available in MonetDB.");
+	}
+
+	@Override
+	protected void append(GeneralDBSqlPeriodContainedBy expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlPeriodContains expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlPeriodIntersection expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlPeriodMinus expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlPeriodOverlaps expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlPeriodUnion expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlAfterPeriod expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlBeforePeriod expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlOverleftPeriod expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlOverrightPeriod expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlEqualsPeriod expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlNequalsPeriod expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlMeets expr, GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlStarts expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlFinishes expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlAdjacentPeriod expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	/* (non-Javadoc)
+	 * @see org.openrdf.sail.generaldb.evaluation.GeneralDBQueryBuilder#append(org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodStart, org.openrdf.sail.generaldb.evaluation.GeneralDBSqlExprBuilder)
+	 */
+	@Override
+	protected void append(GeneralDBSqlPeriodStart expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	/* (non-Javadoc)
+	 * @see org.openrdf.sail.generaldb.evaluation.GeneralDBQueryBuilder#append(org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodEnd, org.openrdf.sail.generaldb.evaluation.GeneralDBSqlExprBuilder)
+	 */
+	@Override
+	protected void append(GeneralDBSqlPeriodEnd expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void append(GeneralDBSqlPeriodIntersects expr,
+			GeneralDBSqlExprBuilder filter)
+			throws UnsupportedRdbmsOperatorException {
+		// TODO Auto-generated method stub
+		
 	}
 
 }
