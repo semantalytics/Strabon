@@ -8,13 +8,22 @@ package org.openrdf.sail.generaldb.iteration;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collection;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 
+
 import org.openrdf.model.Value;
+import org.openrdf.model.impl.URIImpl;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.algebra.evaluation.QueryBindingSet;
+import org.openrdf.query.algebra.evaluation.function.spatial.StrabonInstant;
+import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPeriod;
+import eu.earthobservatory.constants.TemporalConstants;
 import org.openrdf.sail.generaldb.GeneralDBSpatialFuncInfo;
 import org.openrdf.sail.generaldb.GeneralDBValueFactory;
 import org.openrdf.sail.generaldb.algebra.GeneralDBColumnVar;
@@ -31,6 +40,8 @@ import eu.earthobservatory.constants.GeoConstants;
  * Converts a {@link ResultSet} into a {@link BindingSet} in an iteration.
  * 
  * @author Manos Karpathiotakis <mk@di.uoa.gr>
+ * @author Konstantina Bereta <Konstantina.Bereta@di.uoa.gr> (added suport for temporal variables)
+ * 
  */
 public abstract class GeneralDBBindingIteration extends RdbmIterationBase<BindingSet, QueryEvaluationException> {
 
@@ -42,7 +53,11 @@ public abstract class GeneralDBBindingIteration extends RdbmIterationBase<Bindin
 
 	protected IdSequence ids;
 
+	//XXX addition- manolee
 	protected HashMap<Integer,String> geoNames = new HashMap<Integer, String>();
+	
+	//XXX addition - constant
+	protected HashMap<Integer,String> temporalVars = new HashMap<Integer, String>();
 
 	//protected HashMap<String, Integer> sp_ConstructIndexesAndNames = new HashMap<String, Integer>();
 	protected HashMap<GeneralDBSpatialFuncInfo, Integer> sp_ConstructIndexesAndNames = new HashMap<GeneralDBSpatialFuncInfo, Integer>();
@@ -63,6 +78,8 @@ public abstract class GeneralDBBindingIteration extends RdbmIterationBase<Bindin
 		super(stmt);
 	}
 
+	////
+
 	public HashMap<GeneralDBSpatialFuncInfo, Integer> getConstructIndexesAndNames() {
 		return sp_ConstructIndexesAndNames;
 	}
@@ -74,9 +91,15 @@ public abstract class GeneralDBBindingIteration extends RdbmIterationBase<Bindin
 	public HashMap<Integer,String> getGeoNames() {
 		return geoNames;
 	}
+	public HashMap<Integer,String> getTemporalVars() {
+		return temporalVars;
+	}
 
 	public void setGeoNames(HashMap<Integer,String> geoNames) {
 		this.geoNames = geoNames;
+	}
+	public void setTemporalVars(HashMap<Integer,String> temporalVars) {
+		this.temporalVars = temporalVars;
 	}
 
 	public void setBindings(BindingSet bindings) {
@@ -95,6 +118,7 @@ public abstract class GeneralDBBindingIteration extends RdbmIterationBase<Bindin
 		this.ids = ids;
 	}
 
+	//XXX Numerous additions here!
 	@Override
 	protected BindingSet convert(ResultSet rs)
 	throws SQLException
@@ -126,14 +150,19 @@ public abstract class GeneralDBBindingIteration extends RdbmIterationBase<Bindin
 			if (var != null && !result.hasBinding(name)) {
 				Value value = var.getValue();
 				if (value == null) {
-					if(!var.isSpatial())
+					
+					if(var.isSpatial())
+					{
+						value = createGeoValue(rs, var.getIndex() + 1);
+					}
+					else if(var.isTemporal())
+					{
+						value = createTemporalValue(rs,var.getIndex()+1);
+					}
+					else
 					{
 						//default action
 						value = createValue(rs, var.getIndex() + 1);
-					}
-					else//geoVar encountered
-					{
-						value = createGeoValue(rs, var.getIndex() + 1);
 					}
 				}
 				if (value != null) {
@@ -165,6 +194,13 @@ public abstract class GeneralDBBindingIteration extends RdbmIterationBase<Bindin
 			case WKTLITERAL: 
 				value = createWellKnownTextLiteralGeoValueForSelectConstructs(rs, sp_ConstructIndexesAndNames.get(construct));
 				break;
+			case PERIOD: 
+				value = createPeriodValueForSelectConstructs(rs, sp_ConstructIndexesAndNames.get(construct));
+				break;
+			case INSTANT: 
+				value = createPeriodValueForSelectConstructs(rs, sp_ConstructIndexesAndNames.get(construct));
+				break;
+
 			}
 			//Value value = createGeoValueForSelectConstructs(rs, sp_ConstructIndexesAndNames.get(construct));
 			result.addBinding(construct.getFieldName(), value);
@@ -210,11 +246,25 @@ public abstract class GeneralDBBindingIteration extends RdbmIterationBase<Bindin
 	protected abstract RdbmsValue createGeoValue(ResultSet rs, int index)
 	throws SQLException;
 	
-	protected abstract RdbmsValue createWellKnownTextGeoValueForSelectConstructs(ResultSet rs, int index) throws SQLException;
+	protected abstract RdbmsValue createTemporalValue(ResultSet rs, int index)
+	throws SQLException;
 	
+	protected abstract RdbmsValue createWellKnownTextGeoValueForSelectConstructs(ResultSet rs, int index) throws SQLException;
+
 	protected abstract RdbmsValue createWellKnownTextLiteralGeoValueForSelectConstructs(ResultSet rs, int index) throws SQLException;
 
-	protected RdbmsValue createDoubleGeoValueForSelectConstructs(ResultSet rs, int index) throws SQLException
+	/**
+	 * FIXME the implementation of this function for PostGIS and MonetDB
+	 * uses by default the {@link GeoConstants#WKT} datatype when creating WKT
+	 * literals. What about geo:wktLiteral?
+	 * However, this method is called by {@link convert} method only, which
+	 * in turn is not called by any method!
+	 */
+	protected abstract RdbmsValue createBinaryGeoValueForSelectConstructs(ResultSet rs, int index)
+	throws SQLException;
+
+	protected RdbmsValue createDoubleGeoValueForSelectConstructs(ResultSet rs, int index)
+	throws SQLException
 	{
 		double potentialMetric;
 		//case of metrics
@@ -223,6 +273,47 @@ public abstract class GeneralDBBindingIteration extends RdbmIterationBase<Bindin
 		return vf.asRdbmsLiteral(vf.createLiteral(potentialMetric));
 
 	}
+	
+	protected RdbmsValue createPeriodValueForSelectConstructs(ResultSet rs, int index)
+	throws SQLException
+	{
+		String datatype = null; 
+		String label = rs.getString(index + 1);
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-DD'T'HH:mm:ss");
+		SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-DD HH:mm:ss");
+
+		if(label.contains(",")) //period representation
+		{		
+			String start = label.substring(label.indexOf('[')+1,label.indexOf(','));
+			String end = label.substring(label.indexOf(',')+1,label.indexOf(')') );
+				
+			if(start.equals(end))
+			{
+				datatype = TemporalConstants.INSTANT;
+				label = end;
+			}
+			else
+			{
+				datatype = TemporalConstants.PERIOD;
+			}
+		}
+		else
+		{
+			label = label.replace(" ", "T");
+			datatype = TemporalConstants.INSTANT;
+		}
+		return vf.asRdbmsLiteral(vf.createLiteral(label,new URIImpl("<"+datatype+">")));
+	}
+	protected RdbmsValue createInstantValueForSelectConstructs(ResultSet rs, int index)
+	throws SQLException
+	{
+		String  instant = rs.getString(index + 1);
+
+		return vf.asRdbmsLiteral(vf.createLiteral(instant, new URIImpl(TemporalConstants.INSTANT)));
+
+	}
+
+		
 
 	protected RdbmsValue createIntegerGeoValueForSelectConstructs(ResultSet rs, int index)
 	throws SQLException
@@ -249,4 +340,26 @@ public abstract class GeneralDBBindingIteration extends RdbmIterationBase<Bindin
 		return vf.asRdbmsLiteral(vf.createLiteral(spProperty));
 
 	}
+
+	//	protected RdbmsValue createGeoValueForSelectConstructs(ResultSet rs, int index)
+	//	throws SQLException
+	//	{
+	//		double potentialMetric;
+	//		try
+	//		{
+	//			//case of metrics
+	//			potentialMetric = rs.getFloat(index + 1);
+	//
+	//			return vf.asRdbmsLiteral(vf.createLiteral(potentialMetric));
+	//
+	//		}
+	//		catch(SQLException e)
+	//		{
+	//			//Case of spatial constructs
+	//			byte[] label = rs.getBytes(index + 1);
+	//			return vf.getRdbmsPolyhedron(114, StrabonPolyhedron.ogcGeometry, label);
+	//		}
+	//
+	//	}
+
 }
