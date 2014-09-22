@@ -20,10 +20,11 @@ import java.util.Map;
 
 import org.openrdf.model.Literal;
 import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
 import org.openrdf.model.impl.BooleanLiteralImpl;
 import org.openrdf.model.impl.LiteralImpl;
-import org.openrdf.model.impl.NumericLiteralImpl;
 import org.openrdf.model.impl.URIImpl;
+import org.openrdf.model.impl.ValueFactoryImpl;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.Dataset;
 import org.openrdf.query.QueryEvaluationException;
@@ -43,12 +44,27 @@ import org.openrdf.query.algebra.evaluation.QueryBindingSet;
 import org.openrdf.query.algebra.evaluation.ValueExprEvaluationException;
 import org.openrdf.query.algebra.evaluation.function.Function;
 import org.openrdf.query.algebra.evaluation.function.FunctionRegistry;
+import org.openrdf.query.algebra.evaluation.function.spatial.AbstractWKT;
+import org.openrdf.query.algebra.evaluation.function.spatial.GeometryDatatype;
 import org.openrdf.query.algebra.evaluation.function.spatial.SpatialConstructFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.SpatialMetricFunc;
+import org.openrdf.query.algebra.evaluation.function.spatial.SpatialPropertyFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.SpatialRelationshipFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
+import org.openrdf.query.algebra.evaluation.function.spatial.WKTHelper;
+import org.openrdf.query.algebra.evaluation.function.spatial.geosparql.nontopological.GeoSparqlConvexHullFunc;
+import org.openrdf.query.algebra.evaluation.function.spatial.geosparql.property.GeoSparqlGetSRIDFunc;
+import org.openrdf.query.algebra.evaluation.function.spatial.postgis.construct.Centroid;
+import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.construct.BoundaryFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.metric.AreaFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.metric.DistanceFunc;
+import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.AsGMLFunc;
+import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.AsTextFunc;
+import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.DimensionFunc;
+import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.GeometryTypeFunc;
+import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.IsEmptyFunc;
+import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.IsSimpleFunc;
+import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.property.SridFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.AboveFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.BelowFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.ContainsFunc;
@@ -80,6 +96,7 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBNumericColumn;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSelectProjection;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSelectQuery;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSelectQuery.OrderElem;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlAbstractGeoSrid;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlCase;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlDateTimeMetricBinary;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoAsGML;
@@ -88,6 +105,7 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoDimension;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoGeometryType;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoIsEmpty;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoIsSimple;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSPARQLSrid;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSpatial;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSrid;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlIsNull;
@@ -115,6 +133,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.io.ParseException;
 
 import eu.earthobservatory.constants.GeoConstants;
 
@@ -122,8 +141,9 @@ import eu.earthobservatory.constants.GeoConstants;
  * Extends the default strategy by accepting {@link GeneralDBSelectQuery} and evaluating
  * them on a database.
  * 
- * @author Manos Karpathiotakis <mk@di.uoa.gr>
  * @author Dimitrianos Savva <dimis@di.uoa.gr>
+ * @author Charalampos Nikolaou <charnik@di.uoa.gr>
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
  */
 public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 
@@ -137,7 +157,7 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 
 	protected IdSequence ids;
 
-	protected HashMap<Integer,String> geoNames = new HashMap<Integer,String>();
+	protected HashMap<String, Integer> geoNames = new HashMap<String, Integer>();
 
 	protected List<GeneralDBSqlExpr> thematicExpressions = new ArrayList<GeneralDBSqlExpr>(5);
 	
@@ -145,7 +165,7 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 	 * Enumeration of the possible types of the results of spatial functions.
 	 * A <tt>NULL</tt> result type is to be interpreted as error.   
 	 */ 
-	public enum ResultType { INTEGER, STRING, BOOLEAN, WKT, WKTLITERAL, DOUBLE, NULL};
+	public enum ResultType { INTEGER, STRING, BOOLEAN, WKT, WKTLITERAL, DOUBLE, URI, NULL};
 
 	//used to retrieve the appropriate column in the Binding Iteration
 	protected HashMap<GeneralDBSpatialFuncInfo, Integer> constructIndexesAndNames = new HashMap<GeneralDBSpatialFuncInfo, Integer>();
@@ -238,6 +258,13 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 
 	/**
 	 * Had to use it for the cases met in group by (Union as an aggregate)
+	 * 
+	 * There is a lot of work here to be done for refactoring the code.
+	 * For example, while it returns a Value, that value might be a 
+	 * StrabonPolyhedron and thus we have lost the datatype of the input
+	 * geometries (constant or GeneralDBPolyhedron -- database values).
+	 * Therefore, later on, when the writer iterates over the results, it
+	 * has to select the default WKT datatype for StrabonPolyhedron values.  
 	 */
 	@Override
 	public Value evaluate(FunctionCall fc, BindingSet bindings) throws ValueExprEvaluationException, QueryEvaluationException
@@ -284,296 +311,164 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 
 		// having evaluated the arguments of the function, evaluate the function
 		try {
-			if(function instanceof SpatialMetricFunc)
+
+			//
+			// SPATIAL METRIC FUNCTIONS
+			//
+			if (function instanceof SpatialMetricFunc)
 			{
 				double funcResult = 0;
-				Geometry leftGeom = null;
-				Geometry rightGeom = null;
-				if(leftResult instanceof StrabonPolyhedron)
-				{
-					leftGeom = ((StrabonPolyhedron) leftResult).getGeometry();
-				}
-				else if(leftResult instanceof GeneralDBPolyhedron)
-				{
-					leftGeom = ((GeneralDBPolyhedron) leftResult).getPolyhedron().getGeometry();
-				}
-				else if(leftResult instanceof Literal)
-				{	
-					/**
-					 * Duplicate work done here in order to retain the literal's datatype...
-					 * Instead of only utilizing StrabonPolyhedron items, I converted them to Literals
-					 * in order to have them appear in Select Clause along with the appropriate datatype.
-					 */
-					leftGeom = new StrabonPolyhedron(((Literal) leftResult).getLabel()).getGeometry();
-					int sridPosition = ((Literal) leftResult).getLabel().indexOf(';');
-					//Default case
-					if(sridPosition == -1)
-					{
-						leftGeom.setSRID(GeoConstants.defaultSRID);
-					}
-					else
-					{
-						sridPosition = ((Literal) leftResult).getLabel().lastIndexOf('/');
-						int srid = Integer.parseInt(((Literal) leftResult).getLabel().substring(sridPosition+1));
-						leftGeom.setSRID(srid);
-					}
-				}
-				else
-				{	//SHOULD NEVER REACH THIS CASE!
-					return null;
-				}
-				if(rightResult != null)
-				{
-				if(rightResult instanceof StrabonPolyhedron)
-				{
-					rightGeom = ((StrabonPolyhedron) rightResult).getGeometry();
-				}
-				else if(rightResult instanceof GeneralDBPolyhedron)
-				{
-					rightGeom = ((GeneralDBPolyhedron) rightResult).getPolyhedron().getGeometry();
-				}
-				else if(rightResult instanceof Literal)
-				{	
-					/**
-					 * Duplicate work done here in order to retain the literal's datatype...
-					 * Instead of only utilizing StrabonPolyhedron items, I converted them to Literals
-					 * in order to have them appear in Select Clause along with the appropriate datatype.
-					 */
-					rightGeom = new StrabonPolyhedron(((Literal) rightResult).getLabel()).getGeometry();
-					int sridPosition = ((Literal) rightResult).getLabel().indexOf(';');
-					//Default case
-					if(sridPosition == -1)
-					{
-						rightGeom.setSRID(GeoConstants.defaultSRID);
-					}
-					else
-					{
-						sridPosition = ((Literal) rightResult).getLabel().lastIndexOf('/');
-						int srid = Integer.parseInt(((Literal) rightResult).getLabel().substring(sridPosition+1));
-						rightGeom.setSRID(srid);
-					}
-				}
-				else
-				{	//SHOULD NEVER REACH THIS CASE!
-					return null;
-				}
-				}
-				else
-				{
-					//it's ok, maybe this is a non-binary function!
-				}
-				
+				Geometry leftGeom = getValueAsStrabonPolyhedron(leftResult).getGeometry();
 				
 				if(function instanceof AreaFunc)
 				{
 					funcResult = leftGeom.getArea();
-				}
-				if(function instanceof DistanceFunc)
+				} 
+				else if(function instanceof DistanceFunc)
 				{
+					// get the second geometry
+					Geometry rightGeom = getValueAsStrabonPolyhedron(rightResult).getGeometry();
+					
 					int targetSRID = leftGeom.getSRID();
 					int sourceSRID = rightGeom.getSRID();
 					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.distance(rightConverted);
 				}
-				return org.openrdf.model.impl.ValueFactoryImpl.getInstance().createLiteral(funcResult);
+				
+				return ValueFactoryImpl.getInstance().createLiteral(funcResult);
 				
 			}
-			else if ( function instanceof SpatialConstructFunc ) {
+			
+			//
+			// SPATIAL CONSTRUCT FUNCTIONS
+			//
+			else if (function instanceof SpatialConstructFunc) {
 				return spatialConstructPicker(function, leftResult, rightResult);
-
-			}  else if(function instanceof SpatialRelationshipFunc)	{
+			}
+			
+			//
+			// SPATIAL RELATIONSHIP FUNCTIONS
+			//
+			else if(function instanceof SpatialRelationshipFunc)	{
 				// Any boolean function present in HAVING - Must evaluate here!
 				
 				boolean funcResult = false;
 				
-				//For the time being I only include stSPARQL ones
-				Geometry leftGeom = null;
-				Geometry rightGeom = null;
+				// get the geometries and the SRIDs of the left/right arguments
+				Geometry leftGeom = getValueAsStrabonPolyhedron(leftResult).getGeometry();
+				Geometry rightGeom = getValueAsStrabonPolyhedron(rightResult).getGeometry();
+				int targetSRID = leftGeom.getSRID();
+				int sourceSRID = rightGeom.getSRID();
 				
-				if(leftResult instanceof StrabonPolyhedron)
-				{
-					leftGeom = ((StrabonPolyhedron) leftResult).getGeometry();
-				}
-				else if(leftResult instanceof GeneralDBPolyhedron)
-				{
-					leftGeom = ((GeneralDBPolyhedron) leftResult).getPolyhedron().getGeometry();
-				}
-				else if(leftResult instanceof Literal)
-				{	
-					/**
-					 * Duplicate work done here in order to retain the literal's datatype...
-					 * Instead of only utilizing StrabonPolyhedron items, I converted them to Literals
-					 * in order to have them appear in Select Clause along with the appropriate datatype.
-					 */
-					leftGeom = new StrabonPolyhedron(((Literal) leftResult).getLabel()).getGeometry();
-					int sridPosition = ((Literal) leftResult).getLabel().indexOf(';');
-					//Default case
-					if(sridPosition == -1)
-					{
-						leftGeom.setSRID(GeoConstants.defaultSRID);
-					}
-					else
-					{
-						sridPosition = ((Literal) leftResult).getLabel().lastIndexOf('/');
-						int srid = Integer.parseInt(((Literal) leftResult).getLabel().substring(sridPosition+1));
-						leftGeom.setSRID(srid);
-					}
-				}
-				else
-				{	//SHOULD NEVER REACH THIS CASE!
-					return null;
-				}
-
-				if(rightResult instanceof StrabonPolyhedron)
-				{
-					rightGeom = ((StrabonPolyhedron) rightResult).getGeometry();
-				}
-				else if(rightResult instanceof GeneralDBPolyhedron)
-				{
-					rightGeom = ((GeneralDBPolyhedron) rightResult).getPolyhedron().getGeometry();
-				}
-				else if(rightResult instanceof Literal)
-				{	
-					/**
-					 * Duplicate work done here in order to retain the literal's datatype...
-					 * Instead of only utilizing StrabonPolyhedron items, I converted them to Literals
-					 * in order to have them appear in Select Clause along with the appropriate datatype.
-					 */
-					rightGeom = new StrabonPolyhedron(((Literal) rightResult).getLabel()).getGeometry();
-					int sridPosition = ((Literal) rightResult).getLabel().indexOf(';');
-					//Default case
-					if(sridPosition == -1)
-					{
-						rightGeom.setSRID(GeoConstants.defaultSRID);
-					}
-					else
-					{
-						sridPosition = ((Literal) rightResult).getLabel().lastIndexOf('/');
-						int srid = Integer.parseInt(((Literal) rightResult).getLabel().substring(sridPosition+1));
-						rightGeom.setSRID(srid);
-					}
-				}
-				else
-				{	//SHOULD NEVER REACH THIS CASE!
-					return null;
-				}
-
+				// transform the second geometry to the SRID of the first one
+				Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
+				
+				// check the spatial relationship
 				if(function instanceof AboveFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.getEnvelopeInternal().getMinY() > rightConverted.getEnvelopeInternal().getMaxY();
 				}
 				else if(function instanceof IntersectsFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.intersects(rightConverted);
 				}
 				else if(function instanceof BelowFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.getEnvelopeInternal().getMaxY() < rightConverted.getEnvelopeInternal().getMinY();
 				}
 				else if(function instanceof ContainsFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.contains(rightConverted);
 				}
 				else if(function instanceof CrossesFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.crosses(rightConverted);
 				}
 				else if(function instanceof DisjointFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.disjoint(rightConverted);
 				}
 				else if(function instanceof EqualsFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.equals(rightConverted);
 				}
 				else if(function instanceof WithinFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.within(rightConverted);
 				}
 				else if(function instanceof LeftFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.getEnvelopeInternal().getMaxX() < rightConverted.getEnvelopeInternal().getMinX();
 				}
 				else if(function instanceof OverlapsFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.overlaps(rightConverted);
 				}
 				else if(function instanceof RightFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.getEnvelopeInternal().getMinX() > rightConverted.getEnvelopeInternal().getMaxX();
 				}
 				else if(function instanceof TouchesFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.touches(rightConverted);
 				}
 				else if(function instanceof MbbIntersectsFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.getEnvelope().intersects(rightConverted.getEnvelope());
 				}
 				else if(function instanceof MbbWithinFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.getEnvelope().within(rightConverted.getEnvelope());
 				}
 				else if(function instanceof MbbContainsFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.getEnvelope().contains(rightConverted.getEnvelope());
 				}
 				else if(function instanceof MbbEqualsFunc)
 				{
-					int targetSRID = leftGeom.getSRID();
-					int sourceSRID = rightGeom.getSRID();
-					Geometry rightConverted = JTSWrapper.getInstance().transform(rightGeom, sourceSRID, targetSRID);
 					funcResult = leftGeom.getEnvelope().equals(rightConverted.getEnvelope());
 				}
 
 				return funcResult ? BooleanLiteralImpl.TRUE : BooleanLiteralImpl.FALSE;
 			}
-			else {
+			
+			//
+			// SPATIAL PROPERTY FUNCTIONS
+			//
+			else if (function instanceof SpatialPropertyFunc) {
+				ValueFactory localvf = ValueFactoryImpl.getInstance();
+				
+				if (function instanceof GeoSparqlGetSRIDFunc) {
+					return localvf.createURI(getSRIDFromValue(leftResult));
+					
+				} else if (function instanceof SridFunc) {
+					return localvf.createLiteral(getSRIDFromValue(leftResult));
+					
+				} else if (function instanceof IsSimpleFunc) {
+					return localvf.createLiteral(getGeometryFromValue(leftResult).isSimple());
+					
+				} else if (function instanceof IsEmptyFunc) {
+					return localvf.createLiteral(getGeometryFromValue(leftResult).isEmpty());
+					
+				} else if (function instanceof GeometryTypeFunc) {
+					return localvf.createLiteral(getGeometryFromValue(leftResult).getGeometryType());
+					
+				} else if (function instanceof DimensionFunc) {
+					return localvf.createLiteral(getGeometryFromValue(leftResult).getDimension());
+					
+				} else if (function instanceof AsTextFunc) { 
+					// already handled
+					return leftResult;
+					
+				} else if (function instanceof AsGMLFunc) {
+					return localvf.createLiteral(JTSWrapper.getInstance().GMLWrite(getGeometryFromValue(leftResult)));
+					
+				} else {
+					logger.error("[Strabon.evaluate(FunctionCall)] Function {} has not been implemented yet. ", function.getURI());
+					return null;
+				}
+				
+			} else {
 				//Default Sesame Behavior
 				List<ValueExpr> args = fc.getArgs();
 
@@ -585,16 +480,16 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 				
 				return function.evaluate(tripleSource.getValueFactory(), argValues);
 			}
+			
 		} catch (Exception e) {
-			logger.error("Strabon.evaluate(FunctionCall)] Error during evaluation of extension function.", e);
+			logger.error("[Strabon.evaluate(FunctionCall)] Error during evaluation of extension function.", e);
 			return null;
 		}
-
 	}
 
 	public StrabonPolyhedron spatialConstructPicker(Function function, Value left, Value right) throws Exception
 	{
-		StrabonPolyhedron leftArg = ((GeneralDBPolyhedron) left).getPolyhedron();
+		StrabonPolyhedron leftArg = getValueAsStrabonPolyhedron(left);
 		if(function.getURI().equals(GeoConstants.stSPARQLunion))
 		{
 			StrabonPolyhedron rightArg = ((GeneralDBPolyhedron) right).getPolyhedron();
@@ -624,9 +519,9 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 			else if(right instanceof RdbmsURI)
 			{
 				RdbmsURI srid = (RdbmsURI) right;
-				int parsedSRID = Integer.parseInt(srid.toString().substring(srid.toString().lastIndexOf('/')+1));
+				int parsedSRID = WKTHelper.getSRID_forURI(srid.toString());
 				Geometry converted = JTSWrapper.getInstance().transform(leftArg.getGeometry(),leftArg.getGeometry().getSRID(), parsedSRID);
-				return new StrabonPolyhedron(converted);
+				return new StrabonPolyhedron(converted, leftArg.getGeometryDatatype());
 			}
 
 		}
@@ -634,11 +529,12 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 		{
 			return StrabonPolyhedron.envelope(leftArg);
 		}
-		else if(function.getURI().equals(GeoConstants.stSPARQLconvexHull))
+		else if(function.getURI().equals(GeoConstants.stSPARQLconvexHull) ||
+				function instanceof GeoSparqlConvexHullFunc)
 		{
 			return StrabonPolyhedron.convexHull(leftArg);
 		}
-		else if(function.getURI().equals(GeoConstants.stSPARQLboundary))
+		else if(function instanceof BoundaryFunc)
 		{
 			return StrabonPolyhedron.boundary(leftArg);
 		}
@@ -655,10 +551,17 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 		else if(function.getURI().equals(GeoConstants.stSPARQLsymDifference))
 		{
 			StrabonPolyhedron rightArg = ((GeneralDBPolyhedron) right).getPolyhedron();
-			return StrabonPolyhedron.symDifference(leftArg, rightArg);		
-		}
+			return StrabonPolyhedron.symDifference(leftArg, rightArg);
+			
+		} else if (function instanceof Centroid) {
+			return leftArg.getCentroid();
+			
+		} //else if (function instanceof MakeLine) {
+		//	return null;
+		//}
+		
+		logger.error("[GeneralDBEvaluation.spatialConstructPicker] Extension function {} has not been implemented yet in this kind of expressions.", function.getURI());
 		return null;
-
 	}
 
 	@Override
@@ -803,7 +706,7 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 						//XXX if the variable is actually a GeoVar
 						if(var.isSpatial())
 						{
-							this.geoNames.put(var.getIndex()+2,var.getName());
+							this.geoNames.put(var.getName(), var.getIndex() + 2);
 							//I am carrying SRID too! Therefore, shifting index one more position
 							index++;
 						}
@@ -835,19 +738,16 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 			}
 		}
 
-
-
 		//XXX Attention: Will try to add projections in select for the constructs
 		Iterator it = qb.getSpatialConstructs().entrySet().iterator();
 		while (it.hasNext()) {
 			@SuppressWarnings("rawtypes")
 			Map.Entry pairs = (Map.Entry)it.next();
-			//System.out.println(pairs.getKey() + " = " + pairs.getValue());
-
-			//Trying to fill what's missing
+			
+			// Trying to fill what's missing
 			GeneralDBSqlExpr expr = (GeneralDBSqlExpr) pairs.getValue();
-			locateColumnVars(expr,qb.getVars());
-
+			locateColumnVars(expr, qb.getVars());
+			
 			//Assuming thematic aggregates and spatial expressions won't be combined
 			if(!this.thematicExpressions.contains(expr))
 			{
@@ -861,8 +761,8 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 					throw new UnsupportedRdbmsOperatorException("No such spatial expression exists!");
 					
 				} else {
-					info = new GeneralDBSpatialFuncInfo((String) pairs.getKey(), type);
-					
+					info = new GeneralDBSpatialFuncInfo((String) pairs.getKey(), type, expr instanceof GeneralDBSqlAbstractGeoSrid);
+
 					// set increaseIndex to <tt>true</tt> for geometries only (see commend below)
 					if (type == ResultType.WKT || type == ResultType.WKTLITERAL) {
 						increaseIndex = true;
@@ -870,8 +770,7 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 					
 				}
 
-				//constructIndexesAndNames.put((String) pairs.getKey(),index++);
-				constructIndexesAndNames.put(info,index++);
+				constructIndexesAndNames.put(info, index++);
 				if(increaseIndex)
 				{
 					//Increasing index by one more because of SRID!
@@ -981,7 +880,7 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 		}
 		else if(expr instanceof GeneralDBLabelColumn)//ColumnVar at least
 		{
-			String name = ((GeneralDBLabelColumn) expr).getVarName().replace("?spatial","");;
+			String name = ((GeneralDBLabelColumn) expr).getVarName().replace("?spatial","");
 
 			for(GeneralDBColumnVar reference: allKnown)
 			{
@@ -1076,6 +975,120 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 		//return allVars;
 	}
 
+	
+	/**
+	 * Very customized method for taking the URI corresponding to the SRID of a
+	 * {@link Value} that may be one of {@link StrabonPolyhedron}, 
+	 * {@link GeneralDBPolyhedron}, or {@link Literal}.
+	 * 
+	 * The insight is that we would like to return the URI for CRS84 when the
+	 * SRID equals {@link GeoConstants.EPSG4326_SRID} and not the URI for 
+	 * EPSG:4326. Since, we have such information available, we choose to
+	 * do compute it.
+	 * 
+	 * @param value
+	 * @return
+	 */
+	public String getSRIDFromValue(Value value) {
+		boolean iswktLiteral = false;
+		int srid = -1;
+		
+		if (value instanceof GeneralDBPolyhedron) {
+			StrabonPolyhedron poly = ((GeneralDBPolyhedron) value).getPolyhedron(); 
+			srid = poly.getGeometry().getSRID();
+			
+			if (poly.getGeometryDatatype() == GeometryDatatype.wktLiteral) {
+				iswktLiteral = true;
+			}
+			
+		} else if (value instanceof StrabonPolyhedron) {
+			StrabonPolyhedron poly = ((StrabonPolyhedron) value); 
+			srid = poly.getGeometry().getSRID();
+			
+			if (poly.getGeometryDatatype() == GeometryDatatype.wktLiteral) {
+				iswktLiteral = true;
+			}
+			
+		} else if (value instanceof Literal) {
+			Literal literal = (Literal) value;
+			AbstractWKT wkt;
+			
+			if (literal.getDatatype() != null) {
+				wkt = new AbstractWKT(literal.stringValue(), literal.getDatatype().stringValue());
+				
+			} else {
+				wkt = new AbstractWKT(literal.stringValue());
+			}
+			 
+			srid = wkt.getSRID();
+			if (!wkt.isstRDFWKT()) {
+				iswktLiteral = true;
+			}
+		}
+		
+		if (iswktLiteral && srid == GeoConstants.EPSG4326_SRID) {
+			return GeoConstants.CRS84_URI;
+			
+		} else {
+			return WKTHelper.getEPSGURI_forSRID(srid);
+		}
+	}
+	
+	public Geometry getGeometryFromValue(Value value) throws ParseException {
+		if (value instanceof GeneralDBPolyhedron) {
+			return ((GeneralDBPolyhedron) value).getPolyhedron().getGeometry();
+			
+		} else if (value instanceof StrabonPolyhedron) {
+			return ((StrabonPolyhedron) value).getGeometry();
+			
+		} else if (value instanceof Literal) {
+			Literal literal = (Literal) value;
+			AbstractWKT wkt = null;
+			
+			if (literal.getDatatype() == null) {
+				wkt = new AbstractWKT(literal.stringValue());
+				
+			} else {
+				wkt = new AbstractWKT(literal.stringValue(), literal.getDatatype().stringValue());
+			}
+			
+			Geometry geom = JTSWrapper.getInstance().WKTread(wkt.getWKT());
+			geom.setSRID(wkt.getSRID());
+			
+			return geom;
+			
+		} else {
+			return null;
+		}
+	}
+
+	StrabonPolyhedron getValueAsStrabonPolyhedron(Value value) throws ParseException {
+		if (value instanceof GeneralDBPolyhedron) {
+			return ((GeneralDBPolyhedron) value).getPolyhedron();
+			
+		} else if (value instanceof StrabonPolyhedron) {
+			return (StrabonPolyhedron) value;
+			
+		} else if (value instanceof Literal) {
+			Literal literal = (Literal) value;
+			AbstractWKT wkt = null;
+			
+			if (literal.getDatatype() == null) {
+				wkt = new AbstractWKT(literal.stringValue());
+				
+			} else {
+				wkt = new AbstractWKT(literal.stringValue(), literal.getDatatype().stringValue());
+			}
+			
+			return new StrabonPolyhedron(wkt.getWKT(), 
+										 wkt.getSRID(), 
+										 GeometryDatatype.fromString(literal.getDatatype().stringValue()));
+			
+		} else { // wrong case
+			throw new IllegalArgumentException("The provided argument is not a valid spatial value: " + value.getClass());
+		}
+	}
+	
 	/**
 	 * Given an expression get the type of the result. 
 	 * 
@@ -1101,6 +1114,9 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 					expr instanceof GeneralDBSqlGeoIsEmpty	)
 			{
 				return ResultType.BOOLEAN;
+				
+			} else if (expr instanceof GeneralDBSqlGeoSPARQLSrid) {
+				return ResultType.URI;
 			}
 
 		}

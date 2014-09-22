@@ -34,18 +34,19 @@ import org.openrdf.model.impl.URIImpl;
 import org.openrdf.query.Binding;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.TupleQueryResultHandlerException;
+import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
+import org.openrdf.query.algebra.evaluation.function.spatial.WKTHelper;
 import org.openrdf.query.resultio.TupleQueryResultFormat;
 import org.openrdf.query.resultio.TupleQueryResultWriter;
 import org.openrdf.query.resultio.stSPARQLQueryResultFormat;
 import org.openrdf.sail.generaldb.model.GeneralDBPolyhedron;
-
-import eu.earthobservatory.constants.GeoConstants;
 
 /**
  * A {@link TupleQueryResultWriter} that writes tuple query results in the <a
  * href="http://www.w3.org/TR/rdf-sparql-XMLres/">SPARQL Query Results XML
  * Format</a>.
  * 
+ * @author Charalampos Nikolaou <charnik@di.uoa.gr>
  * @author Manos Karpathiotakis <mk@di.uoa.gr>
  */
 public class stSPARQLResultsXMLWriter implements TupleQueryResultWriter {
@@ -163,16 +164,23 @@ public class stSPARQLResultsXMLWriter implements TupleQueryResultWriter {
 	private void writeValue(Value value) throws IOException {
 		if (value instanceof URI) {
 			writeURI((URI) value);
+			
 		} else if (value instanceof BNode) {
 			writeBNode((BNode) value);
+			
 		} else if (value instanceof Literal) {
 			writeLiteral((Literal) value);
-		} 
-		else { // spatial literal
-			// else if (value instanceof RdbmsPolyhedron)
-			URI datatype = new URIImpl(GeoConstants.WKT);
-			GeneralDBPolyhedron dbpolyhedron = (GeneralDBPolyhedron) value;
-			Literal literal = new LiteralImpl(value.stringValue(), dbpolyhedron.getDatatype());
+			
+		} else if (value instanceof GeneralDBPolyhedron) { // spatial case from database
+			GeneralDBPolyhedron poly = (GeneralDBPolyhedron) value;
+			writeLiteral(new LiteralImpl(poly.stringValue(), poly.getDatatype()));
+			
+		} else if (value instanceof StrabonPolyhedron) { // spatial case from new geometry construction (SELECT) 
+			StrabonPolyhedron poly = (StrabonPolyhedron) value;
+			Literal literal = new LiteralImpl(WKTHelper.createWKT(poly.stringValue(), 
+																  poly.getGeometry().getSRID(),
+																  poly.getGeometryDatatype().toString()), 
+											  new URIImpl(poly.getGeometryDatatype().toString()));
 			writeLiteral(literal);
 		}
 	}
