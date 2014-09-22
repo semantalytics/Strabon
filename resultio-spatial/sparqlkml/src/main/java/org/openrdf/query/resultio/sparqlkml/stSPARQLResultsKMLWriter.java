@@ -16,18 +16,19 @@ import java.util.List;
 import javax.xml.bind.JAXBException;
 import javax.xml.namespace.QName;
 
-import org.apache.xerces.xni.grammars.XMLGrammarDescription;
 import org.geotools.kml.KML;
 import org.geotools.kml.KMLConfiguration;
 import org.geotools.xml.Encoder;
 import org.openrdf.model.BNode;
 import org.openrdf.model.Literal;
 import org.openrdf.model.Value;
+import org.openrdf.model.impl.LiteralImpl;
+import org.openrdf.model.impl.URIImpl;
 import org.openrdf.query.Binding;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.TupleQueryResultHandlerException;
-import org.openrdf.query.algebra.IsLiteral;
 import org.openrdf.query.algebra.evaluation.function.spatial.AbstractWKT;
+import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
 import org.openrdf.query.algebra.evaluation.util.JTSWrapper;
 import org.openrdf.query.resultio.TupleQueryResultFormat;
 import org.openrdf.query.resultio.TupleQueryResultWriter;
@@ -55,7 +56,6 @@ import eu.earthobservatory.constants.GeoConstants;
  * @author Charalampos Nikolaou <charnik@di.uoa.gr>
  * @author Panayiotis Smeros <psmeros@di.uoa.gr>
  * @author Konstantina Bereta <konstantina.bereta@di.uoa.gr>
- * 
  */
 public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 	private static final Logger logger = LoggerFactory.getLogger(org.openrdf.query.resultio.sparqlkml.stSPARQLResultsKMLWriter.class);
@@ -67,9 +67,9 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 	private static final String PLACEMARK_TAG 		= "Placemark";
 	private static final String TIMESTAMP_TAG 		= "TimeStamp";
 	private static final String TIMESPAN_TAG 		= "TimeSpan";
-	private static final String BEGIN_TAG 		= "begin";
-	private static final String END_TAG 		= "end";
-	private static final String WHEN_TAG 		= "when";
+	private static final String BEGIN_TAG 			= "begin";
+	private static final String END_TAG 			= "end";
+	private static final String WHEN_TAG 			= "when";
 	private static final String NAME_TAG 			= "name";
 	private static final String DESC_TAG 			= "description";
 	private static final String EXT_DATA_TAG 		= "ExtendedData";
@@ -198,7 +198,6 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 		try {
 			// true if there are bindings that do not correspond to geometries
 			boolean hasDesc = false;
-			String timeValue;
 			
 			Hashtable<String, String> extData = new Hashtable<String, String>();
 
@@ -334,6 +333,11 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 				geom = dbpolyhedron.getPolyhedron().getGeometry();
 				srid = dbpolyhedron.getPolyhedron().getGeometry().getSRID();
 				
+			} else if (value instanceof StrabonPolyhedron) { // spatial case from new geometry construction (SELECT) 
+					StrabonPolyhedron poly = (StrabonPolyhedron) value;
+					geom = poly.getGeometry();
+					srid = geom.getSRID();
+					
 			} else { // spatial literal
 				Literal spatial = (Literal) value;
 				String geomRep = spatial.stringValue();
@@ -343,9 +347,9 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 					AbstractWKT awkt = null;
 					if (spatial.getDatatype() == null) { // plain WKT literal
 						awkt = new AbstractWKT(geomRep);
+						
 					} else { // typed WKT literal
-						awkt = new AbstractWKT(geomRep, spatial.getDatatype()
-								.stringValue());
+						awkt = new AbstractWKT(geomRep, spatial.getDatatype().stringValue());
 					}
 
 					geom = jts.WKTread(awkt.getWKT());
@@ -357,8 +361,8 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 				}
 			}
 			
-			// transform the geometry to {@link GeoConstants#defaultSRID}
-			geom = jts.transform(geom, srid, GeoConstants.defaultSRID);
+			// transform the geometry to {@link GeoConstants#EPSG4326_SRID}
+			geom = jts.transform(geom, srid, GeoConstants.EPSG4326_SRID);
 			
 			if (geom instanceof Point) {
 				geometryType = KML.Point;

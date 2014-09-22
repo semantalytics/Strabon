@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.openrdf.query.algebra.evaluation.function.spatial.AbstractWKT;
-import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
 import org.openrdf.query.algebra.evaluation.function.spatial.WKTHelper;
 import org.openrdf.sail.generaldb.algebra.GeneralDBColumnVar;
 import org.openrdf.sail.generaldb.algebra.GeneralDBDateTimeColumn;
@@ -22,6 +21,7 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBLabelColumn;
 import org.openrdf.sail.generaldb.algebra.GeneralDBNumberValue;
 import org.openrdf.sail.generaldb.algebra.GeneralDBNumericColumn;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlAbove;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlAbstractGeoSrid;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlAnd;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlBelow;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlCase;
@@ -44,6 +44,7 @@ import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoGeometryType;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoIntersection;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoIsEmpty;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoIsSimple;
+import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSPARQLSrid;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSpatial;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSrid;
 import org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSymDifference;
@@ -130,6 +131,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 	public static final String ST_ASBINARY		= "ST_AsBinary";
 	public static final String GEOGRAPHY		= "Geography";
 	public static final String GEOMETRY			= "Geometry";
+	
 	/**
 	 * If (spatial) label column met is null, I must not try to retrieve its srid. 
 	 * Opting to ask for 'null' instead
@@ -369,6 +371,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 		{
 			query.select();
 		}
+		
 		if(expr instanceof BinaryGeneralDBOperator)
 		{
 			dispatchBinarySqlOperator((BinaryGeneralDBOperator) expr, query.select);
@@ -827,22 +830,37 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 		appendGeneralDBSpatialFunctionUnary(expr, filter, SpatialFunctionsPostGIS.ST_AsGML);
 	}
 
-	//	@Override
-	//	protected void append(GeneralDBSqlGeoSrid expr, GeneralDBSqlExprBuilder filter)
-	//	throws UnsupportedRdbmsOperatorException
-	//	{
-	//		appendGeneralDBSpatialFunctionUnary(expr, filter, SpatialFunctionsPostGIS.ST_SRID);
-	//	}
-
+/*	
+   @Override
+	protected void append(GeneralDBSqlGeoSrid expr, GeneralDBSqlExprBuilder filter)
+	throws UnsupportedRdbmsOperatorException
+	{
+		appendGeneralDBSpatialFunctionUnary(expr, filter, SpatialFunctionsPostGIS.ST_SRID);
+	}
+*/
 	/**
-	 * Special Case because I need to retrieve a single different column from geo_values when this function occurs
-	 * in the select clause
+	 * This will call the method below: 
+	 * {@link org.openrdf.sail.postgis.evaluation.PostGISQueryBuilder.append#(org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSrid, org.openrdf.sail.generaldb.evaluation.GeneralDBSqlExprBuilder)}
 	 */
 	@Override
-	protected void append(GeneralDBSqlGeoSrid expr, GeneralDBSqlExprBuilder filter)
-			throws UnsupportedRdbmsOperatorException
-			{
-		boolean sridNeeded = true;
+	protected void append(GeneralDBSqlGeoSrid expr, GeneralDBSqlExprBuilder filter) throws UnsupportedRdbmsOperatorException {
+		appendSrid(expr, filter);
+	}
+	
+	/**
+	 * This will call the method below: 
+	 * {@link org.openrdf.sail.postgis.evaluation.PostGISQueryBuilder.append#(org.openrdf.sail.generaldb.algebra.GeneralDBSqlGeoSrid, org.openrdf.sail.generaldb.evaluation.GeneralDBSqlExprBuilder)}
+	 */
+	@Override
+	protected void append(GeneralDBSqlGeoSPARQLSrid expr, GeneralDBSqlExprBuilder filter) throws UnsupportedRdbmsOperatorException {
+		appendSrid(expr, filter);
+	}
+	
+	/**
+	 * Special case because I need to retrieve a single different column from geo_values when this function occurs
+	 * in the select clause and not call the st_srid() function, which will always give me 4326.
+	 */
+	protected void appendSrid(GeneralDBSqlAbstractGeoSrid expr, GeneralDBSqlExprBuilder filter) throws UnsupportedRdbmsOperatorException {
 		filter.openBracket();
 
 		boolean check1 = expr.getArg().getClass().getCanonicalName().equals("org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull");
@@ -865,7 +883,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 		}
 		else
 		{
-			//XXX Incorporating SRID
+			// Incorporating SRID
 			GeneralDBSqlExpr tmp = expr;
 			if(tmp.getParentNode() == null)
 			{
@@ -882,85 +900,81 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 					{
 						child = ((UnaryGeneralDBOperator) tmp).getArg();
 					}
-					else if(tmp instanceof GeneralDBStringValue)
-					{
-						//Constant!!
-						sridNeeded  = false;
-						break;
-					}
-
-					tmp = child;
-					if(tmp instanceof GeneralDBLabelColumn)
+					else if(tmp instanceof GeneralDBLabelColumn)
 					{
 						//Reached the innermost left var -> need to capture its SRID
-						String alias;
+						String colRef = null;
+						String alias = null;
 						if (((GeneralDBLabelColumn) tmp).getRdbmsVar()==null || ((GeneralDBLabelColumn) tmp).getRdbmsVar().isResource()) {
 							//Predicates used in triple patterns non-existent in db
-							alias="NULL";
+							colRef = "NULL";
 						}
 						else
 						{
 							//Reached the innermost left var -> need to capture its SRID
 							alias = getLabelAlias(((GeneralDBLabelColumn) tmp).getRdbmsVar());
-							alias=alias+".srid";
+							colRef = alias + ".srid";
 						}
-						sridExpr = alias;
+						sridExpr = colRef;
+						
 						filter.append(sridExpr);
 						filter.closeBracket();
+						
+						if (alias != null) { // append an alias for the column of the SRID, 
+							// replacing the part of the name corresponding to the geo_values table
+							filter.as((alias + "_srid").replace("l_", ""));
+						}
+						
 						return;
-						//break;
 					}
 					else if(tmp instanceof GeneralDBStringValue)
 					{
-						//Constant!!
-						sridNeeded  = false;
+						// We need the srid, since this is a constant in the query, so we
+						// should not return just the default SRID, but instead we should
+						// determine it.
+						// Computing it based on the following code using ST_SRID, ST_GeomFromText,
+						// and appendWKT is not the best way, but it does the job good.
 						break;
 					}
-
+					
+					tmp = child;
 				}
 			}
 
-			if(sridNeeded)
+			// we have to compute it
+			filter.appendFunction("ST_SRID");
+			filter.openBracket();
+			if(expr.getArg() instanceof GeneralDBStringValue)
 			{
-				filter.appendFunction("ST_SRID");
-				filter.openBracket();
-				if(expr.getArg() instanceof GeneralDBStringValue)
-				{
-					appendWKT(expr.getArg(),filter);
-				}
-				else if(expr.getArg() instanceof GeneralDBSqlSpatialConstructBinary)
-				{
-					appendConstructFunction(expr.getArg(), filter);
-				}
-				else if(expr.getArg() instanceof GeneralDBSqlSpatialConstructUnary)
-				{
-					appendConstructFunction(expr.getArg(), filter);
-				}
-				else if(expr.getArg() instanceof GeneralDBSqlSpatialConstructTriple)
-				{
-					appendConstructFunction(expr.getArg(), filter);
-				}
-				else if(expr.getArg() instanceof GeneralDBSqlCase)
-				{
-					GeneralDBLabelColumn onlyLabel = (GeneralDBLabelColumn)((GeneralDBSqlCase)expr.getArg()).getEntries().get(0).getResult();
-					appendMBB(onlyLabel,filter); 
-				}
-				else
-				{
-					appendMBB((GeneralDBLabelColumn)(expr.getArg()),filter);
-				}
-
-				filter.closeBracket();
+				appendWKT(expr.getArg(),filter);
+			}
+			else if(expr.getArg() instanceof GeneralDBSqlSpatialConstructBinary)
+			{
+				appendConstructFunction(expr.getArg(), filter);
+			}
+			else if(expr.getArg() instanceof GeneralDBSqlSpatialConstructUnary)
+			{
+				appendConstructFunction(expr.getArg(), filter);
+			}
+			else if(expr.getArg() instanceof GeneralDBSqlSpatialConstructTriple)
+			{
+				appendConstructFunction(expr.getArg(), filter);
+			}
+			else if(expr.getArg() instanceof GeneralDBSqlCase)
+			{
+				GeneralDBLabelColumn onlyLabel = (GeneralDBLabelColumn)((GeneralDBSqlCase)expr.getArg()).getEntries().get(0).getResult();
+				appendMBB(onlyLabel,filter); 
 			}
 			else
 			{
-				// set default SRID ({@link GeoConstants#defaultSRID})
-				filter.append(String.valueOf(GeoConstants.defaultSRID));
+				appendMBB((GeneralDBLabelColumn)(expr.getArg()),filter);
 			}
-		}
 
+			filter.closeBracket();
+		}
+		
 		filter.closeBracket();
-			}
+	}
 
 	@Override
 	protected void append(GeneralDBSqlGeoIsSimple expr, GeneralDBSqlExprBuilder filter)
@@ -979,26 +993,17 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 
 	/**
 	 * 'helper' functions
+	 * @throws UnsupportedRdbmsOperatorException 
 	 */
-
 	@Override
-	protected String appendWKT(GeneralDBSqlExpr expr, GeneralDBSqlExprBuilder filter)
+	protected String appendWKT(GeneralDBSqlExpr expr, GeneralDBSqlExprBuilder filter) throws UnsupportedRdbmsOperatorException
 	{
 		GeneralDBStringValue arg = (GeneralDBStringValue) expr;
 		String raw = arg.getValue();
-
-		StrabonPolyhedron poly = null;
-		try{
-			// have to parse it before and clean it from possible appearance of CRS
-			AbstractWKT wkt = new AbstractWKT(raw);
-			
-			poly = new StrabonPolyhedron(wkt.getWKT());
-			
-			filter.append(" ST_GeomFromText('"+poly.toWKT() +"',"+String.valueOf(wkt.getSRID())+")");
-			
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		
+		// parse raw WKT
+		AbstractWKT wkt = new AbstractWKT(raw);
+		filter.append(" ST_GeomFromText('" + wkt.getWKT() + "'," + String.valueOf(wkt.getSRID()) + ")");
 
 		return raw;
 	}
@@ -1244,7 +1249,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 						sridExpr = alias;
 						break;
 					}
-					else if (tmp instanceof GeneralDBStringValue) //Constant!!
+					else if (tmp instanceof GeneralDBStringValue) // constant!!
 					{
 						sridNeeded  = false;
 						sridExpr = String.valueOf(WKTHelper.getSRID(((GeneralDBStringValue) tmp).getValue()));
@@ -1313,10 +1318,9 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 				filter.keepSRID_part3();
 			}
 			else if(expr.getRightArg() instanceof GeneralDBStringValue)
-			{
-				String unparsedSRID = ((GeneralDBStringValue)expr.getRightArg()).getValue();
-				// TODO Check for other kinds of URIs (e.g., not only for EPSG)
-				sridExpr = String.valueOf(WKTHelper.getSRID(unparsedSRID));
+			{ // the argument is the URI of a CRS
+				String unparsedCRS = ((GeneralDBStringValue)expr.getRightArg()).getValue();
+				sridExpr = String.valueOf(WKTHelper.getSRID_forURI(unparsedCRS));
 				filter.append(sridExpr);
 				filter.closeBracket();
 			}
@@ -2197,7 +2201,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			filter.openBracket();
 			if(expr.getArg() instanceof GeneralDBStringValue)
 			{
-				appendWKT(expr.getArg(),filter);
+				appendWKT(expr.getArg(), filter);
 			}
 			else if(expr.getArg() instanceof GeneralDBSqlSpatialConstructBinary)
 			{
@@ -2214,7 +2218,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			else if(expr.getArg() instanceof GeneralDBSqlCase)
 			{
 				GeneralDBLabelColumn onlyLabel = (GeneralDBLabelColumn)((GeneralDBSqlCase)expr.getArg()).getEntries().get(0).getResult();
-				appendMBB(onlyLabel,filter); 
+				appendMBB(onlyLabel, filter); 
 			}
 			else
 			{
@@ -2890,7 +2894,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 			throws UnsupportedRdbmsOperatorException
 			{
 		filter.openBracket();
-		System.out.println(expr.getLeftArg().getClass().getCanonicalName());
+		//System.out.println(expr.getLeftArg().getClass().getCanonicalName());
 		boolean check1 = expr.getLeftArg().getClass().getCanonicalName().equals("org.openrdf.sail.generaldb.algebra.GeneralDBSqlNull");
 		if(check1)
 		{
