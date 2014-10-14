@@ -45,6 +45,8 @@ import org.slf4j.LoggerFactory;
  * @author Charalampos Nikolaou <charnik@di.uoa.gr>
  * @author Manos Karpathiotakis <mk@di.uoa.gr>
  * @author James Leigh
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
+ * @author Konstantina Bereta   <Konstantina.Bereta@di.uoa.gr>
  * 
  */
 public class GeneralDBValueJoinOptimizer extends GeneralDBQueryModelVisitorBase<RuntimeException> implements
@@ -54,7 +56,6 @@ QueryOptimizer
 	private URITable uris;
 
 	private BNodeTable bnodes;
-
 	private LiteralTable literals;
 
 	private HashTable hashes;
@@ -171,7 +172,7 @@ QueryOptimizer
 	{
 		GeneralDBColumnVar var = node.getRdbmsVar();
 		//XXX If spatial, I don't want this action to take place
-		if(!var.isSpatial())
+		if(!var.isSpatial() && !var.isTemporal())
 		{
 			String alias = "d" + getDBName(var);
 			String tableName = literals.getDatatypeTable().getName();
@@ -209,13 +210,8 @@ QueryOptimizer
 		String alias = "l" + getDBName(var);
 		String tableName;
 		//XXX If spatial, I want to join with geo_values
-		if(!var.isSpatial())
-		{
-			//String alias = "l" + getDBName(var);
-			tableName = literals.getLabelTable().getName();
-			join(var, alias, tableName);
-		}
-		else
+		
+		if(var.isSpatial())
 		{
 			//I don't need a left join in this case! Substituting with inner join!
 			join(var, alias, "geo_values", false);
@@ -241,6 +237,17 @@ QueryOptimizer
 				}
 			}
 		}
+		else if(var.isTemporal())
+		{
+			tableName= "period_values";
+			join(var,alias,tableName,false);
+		}
+		else
+		{
+			//String alias = "l" + getDBName(var);
+			tableName = literals.getLabelTable().getName();
+			join(var, alias, tableName);
+		}
 
 	}
 
@@ -259,9 +266,13 @@ QueryOptimizer
 			throws RuntimeException
 			{
 		GeneralDBColumnVar var = node.getRdbmsVar();
-		String alias = "g" + getDBName(var);
-		String tableName = literals.getLanguageTable().getName();
-		join(var, alias, tableName);
+		if(!var.isTemporal())
+		{
+			String alias = "g" + getDBName(var);
+			String tableName = literals.getLanguageTable().getName();
+			join(var, alias, tableName);
+		
+		}
 			}
 
 	@Override

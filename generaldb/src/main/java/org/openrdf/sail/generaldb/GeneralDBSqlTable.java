@@ -35,7 +35,9 @@ public abstract class GeneralDBSqlTable extends RdbmsTable {
 	protected abstract String buildClear();
 
 	public abstract String buildGeometryCollumn();
-	
+
+	public abstract String buildPeriodCollumn();
+
 	public abstract String buildIndexOnGeometryCollumn();
 
 	public abstract String buildInsertGeometryValue();
@@ -50,4 +52,8 @@ public abstract class GeneralDBSqlTable extends RdbmsTable {
 	public abstract String buildDynamicParameterInteger();
 	
 	public abstract String buildWhere();
+
+	public abstract  String buildIndexOnPeriodColumn();
+
+	public  abstract String buildInsertPeriodValue(); 
 }

@@ -47,8 +47,9 @@ public class PostGISSqlTable extends GeneralDBSqlTable {
 	}
 	
 	@Override
-	public String buildIndexOnGeometryCollumn() {
-		return "CREATE INDEX geoindex ON geo_values USING GIST (strdfgeo)";
+	public String buildIndexOnPeriodColumn() {
+		//return "CREATE INDEX geoindex ON geo_values USING GIST (strdfgeo)";
+		return "CREATE INDEX test_period_idx ON period_values USING GiST (period)";
 	}
 	
 	/**
@@ -58,6 +59,12 @@ public class PostGISSqlTable extends GeneralDBSqlTable {
 	 * 	arg3: SRID of the given geometry (used to transform it to PostGIS' 4326 long/lat CRS)
 	 * 	arg4: SRID of the given geometry to save to the database
 	 */
+	@Override
+	public String buildInsertPeriodValue() {
+		return " (id, period) VALUES (?,period_in(textout(?)))";
+	}
+	
+	
 	@Override
 	public String buildInsertGeometryValue() {
 		return " (id, strdfgeo, srid) VALUES (?, ST_Transform(ST_GeomFromWKB(?, ?),"+DEFAULT_SRID+"), ?)";
@@ -92,5 +99,17 @@ public class PostGISSqlTable extends GeneralDBSqlTable {
 	@Override
 	public String buildWhere() {
 		return " WHERE (1=1) ";
+	}
+
+	@Override
+	public String buildPeriodCollumn() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String buildIndexOnGeometryCollumn() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

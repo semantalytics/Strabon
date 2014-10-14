@@ -5,91 +5,10 @@
  */
 package org.openrdf.sail.generaldb.algebra.factories;
 
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.above;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.abs;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.and;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.asGML;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.asText;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.below;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.cmp;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.concat;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.contains;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.crosses;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.diffDateTime;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.dimension;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.disjoint;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.ehContains;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.ehCoveredBy;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.ehCovers;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.ehDisjoint;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.ehEquals;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.ehInside;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.ehMeet;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.ehOverlap;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.eq;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.eqComparingNull;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.eqIfNotNull;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.equalsGeo;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoArea;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoBoundary;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoBuffer;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoConvexHull;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoDifference;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoDistance;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoEnvelope;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoIntersection;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoSymDifference;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoTransform;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geoUnion;
+import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.*;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geofSRID;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.geometryType;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.gt;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.intersects;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.isEmpty;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.isNotNull;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.isNull;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.isSimple;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.left;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.like;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.lowercase;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.mbbContains;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.mbbEqualsGeo;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.mbbIntersects;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.mbbWithin;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.neq;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.not;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.num;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.or;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.overlaps;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.rccDisconnected;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.rccEquals;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.rccExternallyConnected;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.rccNonTangentialProperPart;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.rccNonTangentialProperPartInverse;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.rccPartiallyOverlapping;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.rccTangentialProperPart;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.rccTangentialProperPartInverse;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.regex;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.relate;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.right;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.sfContains;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.sfCrosses;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.sfDisjoint;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.sfEquals;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.sfIntersects;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.sfOverlaps;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.sfTouches;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.sfWithin;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.simple;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.sqlNull;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.srid;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.st_Centroid;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.st_MakeLine;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.str;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.sub;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.touches;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.unsupported;
-import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.within;
 
 import org.openrdf.model.Literal;
 import org.openrdf.model.Value;
@@ -134,6 +53,28 @@ import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.construct.
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.construct.UnionFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.metric.AreaFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.RelateFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodEndsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodIntersectionFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodMinusFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodStartsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.TemporalConstructFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.periodUnionFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.AdjacentPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.AfterPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.BeforePeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.EqualsPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.MeetsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.NequalsPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.OverleftPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.OverrightPeriodFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.PeriodContainedByFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.PeriodContainsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.PeriodIntersectsFunc;
+import eu.earthobservatory.constants.TemporalConstants;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.TemporalRelationFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.finishesFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.PeriodOverlapsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.startsFunc;
 import org.openrdf.query.algebra.helpers.QueryModelVisitorBase;
 import org.openrdf.sail.generaldb.algebra.GeneralDBFalseValue;
 import org.openrdf.sail.generaldb.algebra.GeneralDBRefIdColumn;
@@ -768,6 +709,35 @@ public class GeneralDBBooleanExprFactory extends QueryModelVisitorBase<Unsupport
 
 			result = spatialMetricPicker(function, leftArg, rightArg, thirdArg);
 		}
+		else if(function instanceof TemporalRelationFunc)
+		{
+			ValueExpr left = functionCall.getArgs().get(0);
+			ValueExpr right = functionCall.getArgs().get(1);
+
+
+			GeneralDBSqlExpr leftArg = null;
+			GeneralDBSqlExpr rightArg = null;
+			GeneralDBSqlExpr thirdArg = null;
+
+			if(left instanceof FunctionCall)
+			{
+				leftArg = temporalFunction((FunctionCall) left);
+			}
+			else
+			{
+				leftArg = label(left);
+			}
+
+			if(right instanceof FunctionCall)
+			{
+				rightArg = temporalFunction((FunctionCall) right);
+			}
+			else
+			{
+				rightArg = label(right);
+			}
+			result = temporalRelationPicker(function, leftArg, rightArg, thirdArg);
+		}
 		else //default case
 		{
 			meetNode(functionCall);
@@ -811,10 +781,87 @@ public class GeneralDBBooleanExprFactory extends QueryModelVisitorBase<Unsupport
 		}
 		return null;
 	}
+	
+	public GeneralDBSqlExpr temporalFunction(FunctionCall functionCall) throws UnsupportedRdbmsOperatorException
+	{
+		Function function = FunctionRegistry.getInstance().get(functionCall.getURI());
+		//FIXME more cases to be added later. E.g, for the temporal construct functions and temporal metric functions
+		if(function instanceof SpatialRelationshipFunc)
+		{
+			return temporalRelationFunction(functionCall,function);	
+		}
+		else if(function instanceof TemporalConstructFunc) //copied behaviour to capture the temporal cases
+		{
+			return temporalConstructFunction(functionCall,function);
+		}
+		
+		return null;
+	}
+	
+	GeneralDBSqlExpr temporalConstructFunction(FunctionCall functionCall, Function function) throws UnsupportedRdbmsOperatorException
+	{
 
-	/**
-	 * TODO check required number of arguments
-	 */
+		GeneralDBSqlExpr leftArg = null;
+		GeneralDBSqlExpr rightArg = null;
+
+		ValueExpr left = functionCall.getArgs().get(0);
+
+
+		if(left instanceof FunctionCall)
+		{
+			leftArg = temporalFunction((FunctionCall) left);
+		}
+		else
+		{
+			leftArg = label(left);
+		}
+
+		if(!( functionCall.getArgs().size()==1))
+		{
+			ValueExpr right = functionCall.getArgs().get(1);
+			if(right instanceof FunctionCall)
+			{
+				rightArg = temporalFunction((FunctionCall) right);
+			}
+			else
+			{
+				rightArg = label(right);
+			}
+		}
+
+		return temporalConstructPicker(function, leftArg, rightArg);
+
+	}
+	GeneralDBSqlExpr temporalRelationFunction(FunctionCall functionCall, Function function) throws UnsupportedRdbmsOperatorException
+	{
+		ValueExpr left = functionCall.getArgs().get(0);
+		ValueExpr right = functionCall.getArgs().get(1);
+
+
+		GeneralDBSqlExpr leftArg = null;
+		GeneralDBSqlExpr rightArg = null;
+		GeneralDBSqlExpr thirdArg = null;
+
+		if(left instanceof FunctionCall)
+		{
+			leftArg = temporalFunction((FunctionCall) left);
+		}
+		else
+		{
+			leftArg = label(left);
+		}
+
+		if(right instanceof FunctionCall)
+		{
+			rightArg = temporalFunction((FunctionCall) right);
+		}
+		else
+		{
+			rightArg = label(right);
+		}
+
+		return temporalRelationPicker(function, leftArg, rightArg, thirdArg);
+	}
 	GeneralDBSqlExpr spatialRelationshipFunction(FunctionCall functionCall, Function function) throws UnsupportedRdbmsOperatorException
 	{
 		ValueExpr left = functionCall.getArgs().get(0);
@@ -1011,7 +1058,97 @@ public class GeneralDBBooleanExprFactory extends QueryModelVisitorBase<Unsupport
 		return spatialPropertyPicker(function, expr);
 
 	}
-
+	
+	GeneralDBSqlExpr temporalConstructPicker(Function function,GeneralDBSqlExpr leftArg, GeneralDBSqlExpr rightArg)
+	{
+		if(function instanceof PeriodIntersectionFunc)
+		{
+			return periodIntersection(leftArg, rightArg);
+		}
+		else if(function instanceof periodUnionFunc)
+		{
+			return periodUnion(leftArg, rightArg);
+		}
+		else if(function instanceof PeriodMinusFunc)
+		{
+			return periodMinus(leftArg, rightArg);
+		}
+		else if(function instanceof PeriodStartsFunc)
+		{
+			return periodStart(leftArg);
+		}
+		else if(function instanceof PeriodEndsFunc)
+		{
+			return periodEnd(leftArg);
+		}
+		else
+			return null;
+	}
+	
+	GeneralDBSqlExpr temporalRelationPicker(Function function,GeneralDBSqlExpr leftArg, GeneralDBSqlExpr rightArg, 
+			GeneralDBSqlExpr thirdArg)
+	{
+		if(function instanceof AfterPeriodFunc)
+		{
+			return afterPeriod(leftArg, rightArg);
+		}
+		else if(function instanceof BeforePeriodFunc)
+		{
+			return beforePeriod(leftArg, rightArg);
+		}
+		else if(function instanceof OverleftPeriodFunc)
+		{
+			return overleftPeriod(leftArg, rightArg);
+		}
+		else if(function instanceof OverrightPeriodFunc)
+		{
+			return overrightPeriod(leftArg, rightArg);
+		}
+		else if(function instanceof EqualsPeriodFunc)
+		{
+			return equalsPeriod(leftArg, rightArg);
+		}
+		else if(function instanceof NequalsPeriodFunc)
+		{
+			return nequalsPeriod(leftArg, rightArg);
+		}
+		else if(function instanceof PeriodContainsFunc)
+		{
+			return periodContains(leftArg, rightArg);
+		}
+		else if(function instanceof PeriodContainedByFunc)
+		{
+			return periodContainedBy(leftArg, rightArg);
+		}
+		else if(function instanceof PeriodOverlapsFunc)
+		{
+			return periodOverlaps(leftArg, rightArg);
+		}
+		else if(function instanceof PeriodIntersectsFunc)
+		{
+			return periodIntersects(leftArg, rightArg);
+		}
+		else if(function instanceof MeetsFunc)
+		{
+			return meets(leftArg, rightArg);
+		}
+		else if(function instanceof startsFunc)
+		{
+			return starts(leftArg, rightArg);
+		}
+		else if(function instanceof finishesFunc)
+		{
+			return finishes(leftArg, rightArg);
+		}
+		else if(function instanceof AdjacentPeriodFunc)
+		{
+			return adjacent(leftArg, rightArg);
+		}
+		else 
+		{
+			return null;
+		}
+	}
 	GeneralDBSqlExpr spatialRelationshipPicker(Function function,GeneralDBSqlExpr leftArg, GeneralDBSqlExpr rightArg, GeneralDBSqlExpr thirdArg)
 	{
 		//XXX stSPARQL		
@@ -1084,6 +1221,39 @@ public class GeneralDBBooleanExprFactory extends QueryModelVisitorBase<Unsupport
 		else if(function.getURI().equals(GeoConstants.stSPARQLmbbEquals))
 		{
 			return mbbEqualsGeo(leftArg,rightArg);
+		}
+		//stSPARQL temporal functions
+		else if(function.getURI().equals(TemporalConstants.after))
+		{
+			return afterPeriod(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.before))
+		{
+			return beforePeriod(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.periodContains))
+		{
+			return periodContains(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.periodOverlaps))
+		{
+			return periodOverlaps(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.adjacent))
+		{
+			return adjacent(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.meets))
+		{
+			return meets(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.starts))
+		{
+			return starts(leftArg,rightArg);
+		}
+		else if(function.getURI().equals(TemporalConstants.finishes))
+		{
+			return finishes(leftArg,rightArg);
 		}
 		//XXX GeoSPARQL
 		//Simple Features

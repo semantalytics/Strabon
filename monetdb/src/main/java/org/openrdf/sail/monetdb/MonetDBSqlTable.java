@@ -80,4 +80,24 @@ public class MonetDBSqlTable extends GeneralDBSqlTable {
 	public String buildWhere() {
 		return " WHERE (1=1 OR 1=1) ";
 	}
+
+
+
+	@Override
+	public String buildIndexOnPeriodColumn() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String buildInsertPeriodValue() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String buildPeriodCollumn() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

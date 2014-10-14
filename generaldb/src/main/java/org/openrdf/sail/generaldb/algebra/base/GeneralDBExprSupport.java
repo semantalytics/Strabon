@@ -93,6 +93,25 @@ import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Intersects;
 import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Overlaps;
 import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Touches;
 import org.openrdf.sail.generaldb.algebra.sf.GeneralDBSqlSF_Within;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlAdjacentPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlAfterPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlBeforePeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlEqualsPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlFinishes;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlMeets;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlNequalsPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlOverleftPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlOverrightPeriod;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodContainedBy;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodContains;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodEnd;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodIntersection;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodIntersects;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodMinus;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodOverlaps;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodStart;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlPeriodUnion;
+import org.openrdf.sail.generaldb.algebra.temporal.GeneralDBSqlStarts;
 import org.openrdf.sail.rdbms.exceptions.UnsupportedRdbmsOperatorException;
 
 /**
@@ -100,6 +119,8 @@ import org.openrdf.sail.rdbms.exceptions.UnsupportedRdbmsOperatorException;
  *
  * @author Manos Karpathiotakis <mk@di.uoa.gr>
  * @author James Leigh
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
+ * @author Konstantina Bereta <Konstantina.Bereta@di.uoa.gr>
  *
  */
 public class GeneralDBExprSupport {
@@ -345,7 +366,73 @@ public class GeneralDBExprSupport {
 	public static GeneralDBSqlExpr below(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
 		return new GeneralDBSqlBelow(left, right);
 	}
-
+	//stSPARQL Temporal Construct Binary Functions
+	
+	public static GeneralDBSqlExpr periodIntersection(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlPeriodIntersection(left, right);
+	}
+	public static GeneralDBSqlExpr periodUnion(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlPeriodUnion(left, right);
+	}
+	public static GeneralDBSqlExpr periodMinus(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlPeriodMinus(left, right);
+	}
+	
+	
+	//stSPARQL Temporal Construct Unary Function
+	
+	public static GeneralDBSqlExpr periodStart(GeneralDBSqlExpr arg) {
+		return new GeneralDBSqlPeriodStart(arg);
+	}
+	
+	public static GeneralDBSqlExpr periodEnd(GeneralDBSqlExpr arg) {
+		return new GeneralDBSqlPeriodEnd(arg);
+	}
+	
+	
+	//stSparql Temporal Relation Functions
+	public static GeneralDBSqlExpr afterPeriod(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlAfterPeriod(left, right);
+	}
+	public static GeneralDBSqlExpr beforePeriod(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlBeforePeriod(left, right);
+	}
+	public static GeneralDBSqlExpr overleftPeriod(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlOverleftPeriod(left, right);
+	}
+	public static GeneralDBSqlExpr overrightPeriod(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlOverrightPeriod(left, right);
+	}
+	public static GeneralDBSqlExpr equalsPeriod(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlEqualsPeriod(left, right);
+	}
+	public static GeneralDBSqlExpr nequalsPeriod(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlNequalsPeriod(left, right);
+	}
+	public static GeneralDBSqlExpr periodContains(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlPeriodContains(left, right);
+	}
+	public static GeneralDBSqlExpr periodContainedBy(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlPeriodContainedBy(left, right);
+	}
+	public static GeneralDBSqlExpr periodOverlaps(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlPeriodOverlaps(left, right);
+	}
+	public static GeneralDBSqlExpr periodIntersects(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlPeriodIntersects(left, right);
+	}
+	public static GeneralDBSqlExpr meets(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlMeets(left, right);
+	}
+	public static GeneralDBSqlExpr starts(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlStarts(left, right);
+	}
+	public static GeneralDBSqlExpr finishes(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlFinishes(left, right);
+	}
+	public static GeneralDBSqlExpr adjacent(GeneralDBSqlExpr left, GeneralDBSqlExpr right) {
+		return new GeneralDBSqlAdjacentPeriod(left, right);
+	}
 	//XXX Spatial Construct Functions
 	public static GeneralDBSqlExpr geoUnion(GeneralDBSqlExpr left, GeneralDBSqlExpr right, String resultType) {
 
