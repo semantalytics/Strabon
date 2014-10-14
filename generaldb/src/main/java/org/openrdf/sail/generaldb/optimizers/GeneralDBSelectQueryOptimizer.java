@@ -9,11 +9,14 @@ import static org.openrdf.sail.generaldb.algebra.GeneralDBColumnVar.createCtx;
 import static org.openrdf.sail.generaldb.algebra.GeneralDBColumnVar.createObj;
 import static org.openrdf.sail.generaldb.algebra.GeneralDBColumnVar.createPred;
 import static org.openrdf.sail.generaldb.algebra.GeneralDBColumnVar.createSpatialColumn;
+import static org.openrdf.sail.generaldb.algebra.GeneralDBColumnVar.createTemporalColumn;
 import static org.openrdf.sail.generaldb.algebra.GeneralDBColumnVar.createSubj;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.coalesce;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.eq;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.isNull;
 import static org.openrdf.sail.generaldb.algebra.base.GeneralDBExprSupport.or;
+
+import info.aduna.lang.service.ServiceRegistry;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -71,6 +74,13 @@ import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.construct.
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.construct.IntersectionFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.construct.TransformFunc;
 import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.construct.UnionFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodEndsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodMinusFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodPrecedingFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodStartsFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.PeriodSucceedingFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.TemporalConstructFunc;
+import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.TemporalRelationFunc;
 import org.openrdf.sail.generaldb.GeneralDBValueFactory;
 import org.openrdf.sail.generaldb.algebra.GeneralDBBNodeColumn;
 import org.openrdf.sail.generaldb.algebra.GeneralDBColumnVar;
@@ -105,7 +115,9 @@ import eu.earthobservatory.constants.GeoConstants;
  * Rewrites the core algebra model with a relation optimised model, using SQL.
  * 
  * @author Charalampos Nikolaou <charnik@di.uoa.gr>
- * @author Manos Karpathiotakis <mk@di.uoa.gr.
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
+ * @author Konstantina Bereta   <Konstantina.Bereta@di.uoa.gr>
+ * 
  */
 public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBase<RuntimeException> 
 //implements QueryOptimizer //removed it consciously
@@ -143,6 +155,16 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 	//Counter used to enumerate expressions in having
 	private int havingID = 1;
 
+	/*
+	 * addition by constant
+	 */
+	private List<String> temporalVars = new ArrayList<String>(15);
+	private GeneralDBColumnVar previousTemporalArg = null;
+	private GeneralDBColumnVar previousTemporalAlias;
+
+	private List<Var> existingTemporalJoins = new ArrayList<Var>();
+
+
 	private static final String ALIAS = "t";
 
 	private GeneralDBSqlExprFactory sql;
@@ -158,6 +180,8 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 	private TransTableManager tables;
 
 	private IdSequence ids;
+
+	private List<TupleExpr> temporalJoins;
 
 	public void setSqlExprFactory(GeneralDBSqlExprFactory sql) {
 		this.sql = sql;
@@ -175,10 +199,11 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 		this.ids = ids;
 	}
 
-	public void optimize(TupleExpr tupleExpr, Dataset dataset, BindingSet bindings, List<TupleExpr> spatialJoins) {
+	public void optimize(TupleExpr tupleExpr, Dataset dataset, BindingSet bindings, List<TupleExpr> spatialJoins, List<TupleExpr> temporalJoins) {
 		this.dataset = dataset;
 		this.bindings = bindings;
 		this.spatialJoins = spatialJoins;
+		this.temporalJoins = temporalJoins;
 		tupleExpr.visit(this);
 	}
 
@@ -380,15 +405,21 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 		GeneralDBColumnVar s = createSubj(alias, subjVar, (Resource)subjValue);
 		GeneralDBColumnVar p = createPred(alias, predVar, (URI)predValue, !present);
 		/**
-		 * XXX enabled spatial objects
+		 * XXX enabled spatial or temporal objects
 		 */
-		boolean spatialObj = false;
+		//boolean spatialObj = false;
 
+
+		GeneralDBColumnVar o = createObj(alias, objVar, objValue);
 		if(geoNames.contains(objVar.getName()))
 		{
-			spatialObj = true;
+			o.setSpatial(true);
 		}
-		GeneralDBColumnVar o = createObj(alias, objVar, objValue, spatialObj);
+		else if(temporalVars.contains(objVar.getName()))
+		{
+			o.setTemporal(true);
+		
+		}
 
 		GeneralDBColumnVar c = createCtx(alias, ctxVar, (Resource)ctxValue);
 
@@ -428,6 +459,11 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 					//Re-initializing it so that no unwanted joins are created by accident!! my addition
 					previousSpatialArg = null;
 				}
+				else if(var.getColumn().equals("obj")&&previousTemporalArg!=null) //do the same for the temporal case
+				{
+					from.addFilter(new GeneralDBSqlEq(new GeneralDBIdColumn(var), new GeneralDBIdColumn(previousTemporalArg)));
+					previousTemporalArg = null;
+				}
 			}
 
 
@@ -444,6 +480,11 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 					
 					// add the corresponding datatype (see {@link GeneralDBValueJoinOptimizer.GeneralDBLabelColumn})
 					proj.setDatatype(new GeneralDBDatatypeColumn(var));
+				}
+				else if(temporalVars.contains(var.getName()))
+				{
+					proj.setStringValue(new GeneralDBLabelColumn(var));
+					previousTemporalAlias = var;
 				}
 				else
 				{
@@ -529,6 +570,28 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 							//							else //DEFAULT CASE. The only case differentiating from this one is buffer(?spatialVar,?thematicVar)
 							//							{
 
+							existingSpatialJoins.add(var);
+							queries[count] = new GeneralDBSelectQuery();
+							Value objValue = getVarValue(var,bindings);
+
+							//any changes in these two lines could cause problems
+							GeneralDBColumnVar colVar = createSpatialColumn("l_"+var.getName(), var, objValue);
+							GeneralDBJoinItem from = new GeneralDBJoinItem("l_"+var.getName(), "geo_values");
+
+							queries[count].setFrom(from);
+
+							//assuming that only one var will reach this case
+							from.addFilter(new GeneralDBSqlEq(new GeneralDBIdColumn(colVar), new GeneralDBIdColumn(previousAlias)));
+
+							//Copying functionality from meet(StatementPattern)
+							GeneralDBSelectProjection proj = new GeneralDBSelectProjection();
+							proj.setVar(colVar);
+							proj.setId(new GeneralDBRefIdColumn(var));
+							break;
+							//							}
+						}
+						else if(var.getName().equals(previousAlias.getName()))
+						{
 							existingSpatialJoins.add(var);
 							queries[count] = new GeneralDBSelectQuery();
 							Value objValue = getVarValue(var,bindings);
@@ -682,6 +745,140 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 				//node.replaceWith(queries[j]);
 
 			}
+			else if(st.getSubjectVar().getName().equals("-dummy-temporal"))
+			{
+
+				//Spatial join
+
+				//				List<Var> allVars = retrieveVars(node.getCondition());
+				List<Var> allVars = new ArrayList<Var>(retrieveVars(node.getCondition()));
+				GeneralDBSelectQuery queries[] = new GeneralDBSelectQuery[allVars.size()];
+
+				int count = 0;
+
+				//will probably be TWO contents at most in all cases concerning spatial filters here - have to make sure of that
+				//Don't know which one of the spatial variables is bound with the upper join! Therefore, I altered the code to check 
+				//for the possibility any of them is the one.
+				int mark = 0;
+				//FIXME remove the list after consulting Kostis for certainty, and replace with table[2]
+				if(allVars.size()>1)
+				{
+					for(Var var : allVars)
+					{
+						if(var.getName().equals(previousTemporalAlias.getName()))
+						{
+
+							//							if(var.getName().endsWith("?-buffer-"))
+							//							{
+							//								bufferCase = true;
+							//								fixVarName(var);
+							//								
+							//								existingSpatialJoins.add(var);
+							//								queries[count] = new GeneralDBSelectQuery();
+							//								Value objValue = getVarValue(var,bindings);
+							//								
+							//								GeneralDBColumnVar colVar = createObj("l_"+var.getName(), var, objValue);
+
+
+							//							}
+							//							else //DEFAULT CASE. The only case differentiating from this one is buffer(?spatialVar,?thematicVar)
+							//							{
+
+							existingTemporalJoins.add(var);
+							queries[count] = new GeneralDBSelectQuery();
+							Value objValue = getVarValue(var,bindings);
+
+							//any changes in these two lines could cause problems
+							GeneralDBColumnVar colVar = createSpatialColumn("l_"+var.getName(), var, objValue);
+							GeneralDBJoinItem from = new GeneralDBJoinItem("l_"+var.getName(), "period_values");
+
+							queries[count].setFrom(from);
+
+							//assuming that only one var will reach this case
+							from.addFilter(new GeneralDBSqlEq(new GeneralDBIdColumn(colVar), new GeneralDBIdColumn(previousTemporalAlias)));
+
+							//Copying functionality from meet(StatementPattern)
+							GeneralDBSelectProjection proj = new GeneralDBSelectProjection();
+							proj.setVar(colVar);
+							proj.setId(new GeneralDBRefIdColumn(var));
+							break;
+							//							}
+						}
+						else if(var.getName().equals(previousTemporalAlias.getName()))
+						{
+							existingTemporalJoins.add(var);
+							queries[count] = new GeneralDBSelectQuery();
+							Value objValue = getVarValue(var,bindings);
+
+							//any changes in these two lines could cause problems
+							GeneralDBColumnVar colVar = createTemporalColumn("l_"+var.getName(), var, objValue);
+							GeneralDBJoinItem from = new GeneralDBJoinItem("l_"+var.getName(), "period_values");
+
+							queries[count].setFrom(from);
+
+							//assuming that only one var will reach this case
+							from.addFilter(new GeneralDBSqlEq(new GeneralDBIdColumn(colVar), new GeneralDBIdColumn(previousTemporalAlias)));
+
+							//Copying functionality from meet(StatementPattern)
+							GeneralDBSelectProjection proj = new GeneralDBSelectProjection();
+							proj.setVar(colVar);
+							proj.setId(new GeneralDBRefIdColumn(var));
+							break;
+							//							}
+						}
+						count++;
+					}
+					mark = (count+1)%2;
+				}
+				//The second var of the spatial join -> must incorporate the spatial filter here
+
+
+				Var var = allVars.get(mark);
+				existingTemporalJoins.add(var);
+				queries[mark] = new GeneralDBSelectQuery();
+				Value objValue = getVarValue(var,bindings);
+
+				//any changes in these two lines could cause problems
+				GeneralDBColumnVar colVar = createTemporalColumn("l_"+var.getName(), var, objValue);
+				GeneralDBJoinItem from = new GeneralDBJoinItem("l_"+var.getName(), "period_values");
+				queries[mark].setFrom(from);
+
+				previousTemporalArg = colVar;
+
+
+				super.meet(node);
+
+
+				//Incorporating temporal filter
+				ValueExpr condition = null;
+				for (ValueExpr expr : flatten(node.getCondition())) 
+				{
+					try 
+					{
+						GeneralDBSqlExpr sqlFilter = sql.createBooleanExpr(expr);
+
+						queries[mark].addFilter(sqlFilter);
+					}
+					catch (UnsupportedRdbmsOperatorException e)
+					{
+						if (condition == null) 
+						{
+							condition = expr;
+						}
+						else 
+						{
+							condition = new And(condition, expr);
+						}
+					}
+				}
+
+				queries[count].setParentNode(node.getParentNode());
+
+				node.replaceWith(queries[mark]);
+			
+
+			
+			}
 			else
 			{
 				super.meet(node);
@@ -753,6 +950,15 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 					//					node.setCondition(null);
 					//					return;
 					dup = true;
+					break;
+				}
+			}
+			for(TupleExpr sfilter : this.temporalJoins)
+			{
+				ValueExpr tmpExpr = ((Filter)sfilter).getCondition();
+				if(tmpExpr.equals(dupFunctionCall))
+				{
+				dup = true;
 					break;
 				}
 			}
@@ -948,30 +1154,58 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 			//				
 			//			}
 		}
-		/**
-		 * Addition for datetime metric functions
-		 * 
-		 * @author George Garbis <ggarbis@di.uoa.gr>
-		 * 
-		 */
-		else if (function instanceof DateTimeMetricFunc)
+		else if(function instanceof TemporalConstructFunc || function instanceof TemporalRelationFunc)
 		{
+
 			List<ValueExpr> allArgs = node.getArgs();
 
-			int argNo = 0; 
-			//Used so that the second argument of buffer func is not 
-			//mistakenly confused with a spatial variable
 			for(ValueExpr arg : allArgs)
 			{	
-				argNo++;
-				if(arg instanceof Var && argNo!=2)
+			
+				if(arg instanceof Var)
 				{
-					String originalName = ((Var)arg).getName();
-					((Var)arg).setName(originalName);
+						//The variable's name is not in the list yet
+						if(!temporalVars.contains(((Var) arg).getName()))
+						{
+							temporalVars.add(((Var) arg).getName());
+
+						}
+						/**
+						 * XXX FOLLOWED THE SAME TRICK BY MANOLEE
+						 */
+
+						String originalName = ((Var)arg).getName();
+						((Var)arg).setName(originalName+"?temporal");
+					}
 				}
 			}
-		}
-		/***/
+//			System.out.println("NOT SPATIAL NOR TEMPORAL FUNCTION- SIMPLE VALUE");
+		
+		
+
+		/**
+		    		 * Addition for datetime metric functions
+		    		 * @author George Garbis <ggarbis@di.uoa.gr>
+		    		 * 
+		    		 */
+		    		else if (function instanceof DateTimeMetricFunc)
+		    		{
+		    			List<ValueExpr> allArgs = node.getArgs();
+		    
+		    			int argNo = 0; 
+		    			//Used so that the second argument of buffer func is not 
+		    			//mistakenly confused with a spatial variable
+		    			for(ValueExpr arg : allArgs)
+		    			{	
+		    				argNo++;
+		    				if(arg instanceof Var && argNo!=2)
+		    				{
+		    					String originalName = ((Var)arg).getName();
+		    					((Var)arg).setName(originalName);
+		    				}
+		    			}
+		    		}
+		 
 	}
 
 	//
@@ -1008,6 +1242,16 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 						}
 						iter.remove();
 					}
+					else if(function instanceof TemporalConstructFunc || function instanceof TemporalRelationFunc)
+					{
+						try {
+							sqlExpr= sql.getBooleanExprFactory().temporalFunction((FunctionCall)expr);
+							reference.getTemporalConstructs().put(name, sqlExpr);
+						} catch (UnsupportedRdbmsOperatorException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
 				}
 				else //Union (or Extent) is used as an aggregate function on Select Clause!
 				{
@@ -1033,6 +1277,8 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 						sqlExpr = sql.getNumericExprFactory().createNumericExpr(expr);
 
 						reference.getSpatialConstructs().put(name, sqlExpr);
+						reference.getTemporalConstructs().put(name, sqlExpr);
+
 						iter.remove();
 					}
 				} catch (UnsupportedRdbmsOperatorException e) {
@@ -1229,6 +1475,8 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 			Function function = FunctionRegistry.getInstance().get(((FunctionCall) expr).getURI());
 			if((!(function instanceof UnionFunc) || !(((FunctionCall) expr).getArgs().size()==1))
 					&&(!(function instanceof IntersectionFunc) || !(((FunctionCall) expr).getArgs().size()==1))
+                                        && !(function instanceof PeriodPrecedingFunc)  
+                                        && !(function instanceof PeriodSucceedingFunc)
 					&&!(function instanceof ExtentFunc))
 			{
 				//Recursively check arguments
@@ -1244,11 +1492,13 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 			}
 			else
 			{
+				System.out.println("Will be evaluated in Java");
 				return true;
 			}
 		}
 		else //Var
 		{
+			System.out.println("Should not be evaluated in Java");
 			return false;
 		}
 
@@ -1614,7 +1864,7 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 				{
 					//if(!((FunctionCall)expr).getURI().equals("http://strdf.di.uoa.gr/ontology#buffer") || argNo!=2 )
 					//{
-					if(!existingSpatialJoins.contains(arg))
+					if(!existingSpatialJoins.contains(arg) && !existingTemporalJoins.contains(arg))
 					{
 						//XXX note: this may cause error if the user intends to 
 						//perform an operation such as ?GEO1 ~ ?GEO1. 
@@ -1638,7 +1888,7 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 		}
 		else if(expr instanceof Var)
 		{
-			if(!existingSpatialJoins.contains(expr))
+			if(!existingSpatialJoins.contains(expr) && !existingTemporalJoins.contains(expr))
 			{
 				//Want to find the UNIQUE names!
 				//if(!vars.contains(expr))

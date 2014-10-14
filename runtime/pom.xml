@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>eu.earthobservatory</groupId>
 		<artifactId>strabon</artifactId>
-		<version>3.2.11-SNAPSHOT</version>
+		<version>3.2.10-temporals-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>strabon-runtime</artifactId>
@@ -120,6 +120,7 @@
 		</dependency>
 
 		<!-- rio API -->
+		
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-rio-rdfxml</artifactId>
@@ -342,8 +343,24 @@
 			<groupId>org.opengis</groupId>
 			<artifactId>geoapi-pending</artifactId>
 		</dependency>
-		
+
+
+    <dependency> 
+        <groupId>net.fortytwo.sesametools</groupId> 
+        <artifactId>nquads</artifactId> 
+        <version>1.7</version> 
+    </dependency>
+    		
 	</dependencies>
+	
+	    <repositories> 
+       <repository> 
+            <id>fortytwo</id> 
+            <name>fortytwo.net Maven repository</name> 
+            <url>http://fortytwo.net/maven2</url> 
+        </repository> 
+    </repositories> 
+ 
 
 	<build>
 		<pluginManagement>
@@ -426,6 +443,16 @@
 							<goal>test-jar</goal>
 						</goals>
 					</execution>
+				</executions>
+			</plugin>
+			
+			<!--  retain permissions -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.6</version>
+				<executions>
+					
 				</executions>
 			</plugin>
 		</plugins>

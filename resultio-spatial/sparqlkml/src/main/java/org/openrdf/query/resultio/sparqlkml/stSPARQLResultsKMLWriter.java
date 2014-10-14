@@ -10,6 +10,7 @@ package org.openrdf.query.resultio.sparqlkml;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
 
@@ -48,11 +49,13 @@ import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.io.ParseException;
 
 import eu.earthobservatory.constants.GeoConstants;
+import eu.earthobservatory.constants.TemporalConstants;
 
 /**
  * @author Manos Karpathiotakis <mk@di.uoa.gr>
  * @author Charalampos Nikolaou <charnik@di.uoa.gr>
  * @author Panayiotis Smeros <psmeros@di.uoa.gr>
+ * @author George Garbis <ggarbis@di.uoa.gr>
  * @author Konstantina Bereta <konstantina.bereta@di.uoa.gr>
  */
 public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
@@ -63,6 +66,7 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 	protected static final String NAMESPACE 		= "http://www.opengis.net/kml/2.2";
 	protected static final String RESULT_SET_TAG 	= "Folder";
 	protected static final String PLACEMARK_TAG 	= "Placemark";
+	protected static final String DOCUMENT_TAG 	= "Document";
 	protected static final String TIMESTAMP_TAG 	= "TimeStamp";
 	protected static final String TIMESPAN_TAG 		= "TimeSpan";
 	protected static final String BEGIN_TAG 		= "begin";
@@ -74,6 +78,9 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 	protected static final String DATA_TAG 			= "Data";
 	protected static final String VALUE_TAG			= "value";
 	protected static final String NAME_ATTR			= NAME_TAG;
+	
+	protected static final String STYLE_TAG		= "Style";
+	protected static final String POLY_STYLE_TAG	= "PolyStyle";
 
 	protected static final String TABLE_ROW_BEGIN 	= "<TR>";
 	protected static final String TABLE_ROW_END 	= "</TR>";
@@ -83,6 +90,7 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 	protected static final String TABLE_DESC_BEGIN 	= "<![CDATA[<TABLE border=\"1\">"+ NEWLINE;
 	protected static final String TABLE_DESC_END 	= "</TABLE>]]>" + NEWLINE;
 
+	
 	/**
 	 * The underlying XML formatter.
 	 */
@@ -137,6 +145,11 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 	private int depth;
 
 	/**
+	 * List of names of predefined KML styles
+	 */
+	private List<String> styleNames = new ArrayList<String>(4);
+	
+	/**
 	 * Creates an stSPARQLResultsKMLWriter that encodes the SPARQL results in
 	 * KML.
 	 * 
@@ -166,11 +179,48 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 			xmlWriter.startDocument();
 			xmlWriter.setAttribute("xmlns", NAMESPACE);
 			xmlWriter.startTag(ROOT_TAG);
-			xmlWriter.startTag(RESULT_SET_TAG);
+			// KML styles can be defined only in a Document element
+			xmlWriter.startTag(DOCUMENT_TAG);
+			
+			// Add predefined KML styles
+			addPolyStyle("green", true, "7700FF00", false);
+			addPolyStyle("yellow", true, "7700FFFF", false);
+			addPolyStyle("orange", true, "7700A5FF", false);
+			addPolyStyle("red", true, "770000FF", false);
 
+			xmlWriter.startTag(RESULT_SET_TAG);
 		} catch (IOException e) {
 			throw new TupleQueryResultHandlerException(e);
 		}
+	}
+	
+	/**
+	 * Adds a new PolyStyle element to the KML output. 
+	 * Also adds a new style to the List of style names 'styleNames'
+	 * 
+	 * @param styleName
+	 * @param fill
+	 * @param color
+	 * @param outline
+	 * @throws TupleQueryResultHandlerException
+	 */
+	public void addPolyStyle(String styleName, boolean fill, String color, boolean outline) throws TupleQueryResultHandlerException {
+		
+		styleNames.add(styleName);
+		
+		try {
+			xmlWriter.setAttribute("id", styleName);
+			xmlWriter.startTag(STYLE_TAG);
+			xmlWriter.startTag(POLY_STYLE_TAG);
+			xmlWriter.textElement("fill", (fill?1:0));
+			xmlWriter.textElement("color", color);
+			xmlWriter.textElement("outline", (outline?1:0));
+			xmlWriter.endTag(POLY_STYLE_TAG);
+			xmlWriter.endTag(STYLE_TAG);
+		} catch (IOException e) {
+			throw new TupleQueryResultHandlerException(e);
+		}
+		
 	}
 
 	@Override
@@ -178,6 +228,7 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 		try {
 			
 			xmlWriter.endTag(RESULT_SET_TAG);
+			xmlWriter.endTag(DOCUMENT_TAG);
 			xmlWriter.endTag(ROOT_TAG);
 			xmlWriter.endDocument();
 			baos.close();
@@ -204,15 +255,44 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 			xmlWriter.startTag(PLACEMARK_TAG);
 			for (Binding binding : bindingSet) {
 				
-				if(!binding.getValue().toString().contains("^^")|| (binding.getValue() instanceof org.openrdf.sail.generaldb.model.GeneralDBPolyhedron)){
+				if(!binding.getValue().toString().contains("^^") || (binding.getValue() instanceof org.openrdf.sail.generaldb.model.GeneralDBPolyhedron)){
 					continue;
 				}
 				Literal literal = (Literal) binding.getValue();
-				if(XMLGSDatatypeUtil.isCalendarDatatype(literal.getDatatype())){
+		
+				// if literal is strabonExt:color
+				if (XMLGSDatatypeUtil.isColorDatatype(literal.getDatatype())) {
+					// if literal contains the name of a predefined style
+					if ( styleNames.contains(literal.stringValue()) ) {
+						xmlWriter.textElement("styleUrl", "#"+literal.stringValue());
+					// literal should contain the hex code of a color. Accordint to
+					// KML format (ABGR)
+					} else {
+						xmlWriter.startTag("Style");
+						xmlWriter.startTag("PolyStyle");
+						xmlWriter.textElement("fill", "1");
+						xmlWriter.textElement("color", literal.stringValue());
+						xmlWriter.textElement("outline", "0");
+						xmlWriter.endTag("PolyStyle");
+						xmlWriter.endTag("Style");
+					}
+				}
+				else if(XMLGSDatatypeUtil.isCalendarDatatype(literal.getDatatype())){
 					hasTimestamp = true;
 					xmlWriter.startTag(TIMESTAMP_TAG);
 					xmlWriter.textElement(WHEN_TAG, literal.getLabel());
 					xmlWriter.endTag(TIMESTAMP_TAG);
+				} else if(literal.getDatatype().stringValue().equalsIgnoreCase(TemporalConstants.PERIOD)){
+					String period = literal.getLabel().replace(")", "]");
+					String start = period.substring(period.indexOf("[")+1, period.indexOf(","));
+					String end = period.trim().substring(period.indexOf(",")+1, period.indexOf("]"));
+					xmlWriter.startTag(TIMESPAN_TAG);
+					xmlWriter.textElement(BEGIN_TAG, start);
+					if(!end.contains("UC")){
+						xmlWriter.textElement(END_TAG, end.trim());	
+					}
+					xmlWriter.endTag(TIMESPAN_TAG);
+
 				}
 			}
 			xmlWriter.textElement(NAME_TAG, "Result" + nresults);
@@ -307,7 +387,7 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 			throw new TupleQueryResultHandlerException(e);
 		}
 	}
-
+	
 	private String getKML(Value value) {
 		String kml = "";
 		

@@ -6,19 +6,35 @@
  * Copyright (C) 2010, 2011, 2012, 2013 Pyravlos Team
  * 
  * http://www.strabon.di.uoa.gr/
+ * 
+ * @author Manos Karpathiotakis <mk@di.uoa.gr>
+ * @author Konstantina Bereta <Konstantina.Bereta@di.uoa.gr>
+ * @author Panayiotis Smeros <psmeros@di.uoa.gr>
  */
 package eu.earthobservatory.runtime.generaldb;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.SQLException;
+import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.openrdf.model.Resource;
 import org.geotools.factory.Hints;
+import org.openrdf.model.Statement;
 import org.openrdf.model.URI;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.query.BindingSet;
@@ -31,6 +47,7 @@ import org.openrdf.query.TupleQueryResult;
 import org.openrdf.query.TupleQueryResultHandlerException;
 import org.openrdf.query.Update;
 import org.openrdf.query.UpdateExecutionException;
+import eu.earthobservatory.constants.TemporalConstants;
 import org.openrdf.query.resultio.TupleQueryResultWriter;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.sail.SailRepository;
@@ -46,9 +63,11 @@ import eu.earthobservatory.utils.Format;
 import eu.earthobservatory.utils.RDFHandlerFactory;
 import eu.earthobservatory.utils.stSPARQLQueryResultToFormatAdapter;
 
+
 public abstract class Strabon {
 
 	private static Logger logger = LoggerFactory.getLogger(eu.earthobservatory.runtime.generaldb.Strabon.class);
+	public static final int LINES_IN_BATCH = 100;
 	/**
 	 * Connection details (shared with subclasses)
 	 */
@@ -225,10 +244,10 @@ public abstract class Strabon {
 	throws MalformedQueryException, QueryEvaluationException, IOException, TupleQueryResultHandlerException {
 		boolean status = true;
 		
-		logger.info("[Strabon.query] Executing query: {}", queryString);
+		logger.info("[Strabon.query] Executing query: \n{}", queryString);
 		
 		// check for null stream
-		if (out == null) {
+		if ((out == null) && (resultsFormat != eu.earthobservatory.utils.Format.EXP)) {
 			logger.error("[Strabon.query] Cannot write to null stream.");
 			
 			return false;
@@ -236,6 +255,8 @@ public abstract class Strabon {
 		
 		TupleQuery tupleQuery = null;
 		try {
+			queryString = utils.queryRewriting(queryString);
+			//queryString = queryRewriting(queryString);
 			tupleQuery = con.prepareTupleQuery(QueryLanguage.SPARQL, queryString);
 			
 		} catch (RepositoryException e) {
@@ -257,6 +278,7 @@ public abstract class Strabon {
 				long t2 = System.nanoTime();
 				
 				while (result.hasNext()) {
+					String r = result.next().toString();
 					results++;
 					result.next();
 				}
@@ -265,7 +287,7 @@ public abstract class Strabon {
 
 				logger.info((t2-t1)+" + "+(t3-t2)+" = "+(t3-t1)+" | "+results);
 				return new long[]{t2-t1, t3-t2, t3-t1, results};
-//				break;
+				//break;
 			
 			case TUQU:
 				
@@ -296,12 +318,118 @@ public abstract class Strabon {
 		return status;
 	}
 
+	/*public String queryRewriting(String queryString) 
+	{
+		String newQueryString="";
+		int numOfQuadruples=0;
+		int startIndex=0;
+		
+		try
+		{
+			String graphVariable="?g"+(int)(Math.random()*10000);
+			while (queryString.contains(graphVariable))
+			{
+				graphVariable+="1";
+			}
+			graphVariable+="_";
+			
+			//remove comments from query
+			queryString=queryString.replaceAll("\\.#", ".\n#");
+		    String REGEX = "((^(\\s)*#)|((\\s)+#)).*$";
+			Pattern pattern = Pattern.compile(REGEX, Pattern.MULTILINE);							
+			Matcher matcher = pattern.matcher(queryString);
+			String oldQueryString=matcher.replaceAll("");
+			
+			//check whether the query contains quadruples	
+			String Word="((\\w)|(\\p{InGreek}))+";
+			String URI="(<([\\S])*>)|("+Word+":"+Word+")";
+			String Literal="\".*\"(\\^\\^"+URI+")?";
+			String Variable="\\?"+Word;
+			
+			String SPOT="(("+URI+")|("+Literal+")|("+Variable+"))";
+			REGEX="("+SPOT+"(\\s)+){3}"+SPOT+"(\\s)*[\\}\\.]";
+			
+
+			pattern = Pattern.compile(REGEX, Pattern.DOTALL);							
+			matcher = pattern.matcher(oldQueryString);
+			
+			while(matcher.find())		
+			{
+				String quadruple=oldQueryString.substring(matcher.start(), matcher.end()).trim();
+				numOfQuadruples++;
+				
+				newQueryString+=oldQueryString.substring(startIndex, matcher.start());
+				startIndex=matcher.end();
+	
+				//tokenize quadruples and convert them to triples:
+				//s p o t  --becomes--> GRAPH ?g(numOfQuadruples) {s p o}
+				//                      ?g(numOfQuadruples) strdf:hasValidTime t
+				
+			
+				String[] token = quadruple.split("(\\s)+");
+	
+				newQueryString+="\n GRAPH "+graphVariable+numOfQuadruples+" { " +token[0]+" "+token[1]+" "+token[2]+" .}\n";
+				newQueryString+=graphVariable+numOfQuadruples+TemporalConstants.VALID_TIME_PROPERTY;
+				
+				//add the rest tokens
+				for( int i=3; i<token.length; i++)
+					newQueryString+=" "+token[i];
+			}
+			
+			if(numOfQuadruples==0)
+			{
+				newQueryString=queryString;
+				logger.info("\n\nQuadruple not found\n\n");
+			}
+			else
+			{
+				newQueryString+=oldQueryString.substring(startIndex);
+				logger.info("\n\nNew QueryString:\n {}\n\n", newQueryString);
+			}
+		}
+		catch(Exception e)
+		{
+			logger.error("[Strabon.queryRewriting]", e);
+		}
+
+		return newQueryString;
+		
+		//backup
+		
+		//escape prefixes
+		//startIndex=oldQueryString.indexOf('{');
+		//newQueryString+=oldQueryString.substring(0, startIndex);
+		//oldQueryString=oldQueryString.substring(startIndex);
+		//startIndex=0;
+		
+		//REGEX = ".*[.[\\s+]](FILTER).*";
+		//pattern = Pattern.compile(REGEX, Pattern.CASE_INSENSITIVE);							
+		//Matcher matcher1 = pattern.matcher(quadruple);
+		//if(matcher1.find())
+		//	continue;
+				
+		//String SPO = "([[a-z][A-Z][?:<]]([\\S])*)";
+		//String C = "((\"\\[.*\\]\"\\^\\^strdf:validTime)|\\?([\\S])*)";
+		//REGEX = "("+SPO+"(\\s)+){3}"+C+"(\\s)*[\\}\\.]{1}";
+
+		
+		//String URI = "[[a-z][A-Z][?:<\\p{InGreek}]][[a-z][A-Z][0-9][\\p{InGreek}@#$%^<>/:;\"\'.]]*";
+		//String SPO = "([[a-z][A-Z][?:<\\p{InGreek}]][\\S]*)&&(^(.PREFIX.))";
+		//String URI = "[\\S&&[^([\\w[\\?]])]]+";
+		
+	}
+
+*/
 	public void update(String updateString, SailRepositoryConnection con) throws MalformedQueryException 
 	{
 		Update update = null;
 
 		try {
-			update = con.prepareUpdate(QueryLanguage.SPARQL, updateString);
+			
+			String reWrittenUpdate = utils.queryRewriting(updateString);
+			logger.info("REWRITTEN UPDATE= "+ reWrittenUpdate);
+			
+			update = con.prepareUpdate(QueryLanguage.SPARQL, reWrittenUpdate);
 			
 		} catch (RepositoryException e) {
 			logger.error("[Strabon.update]", e);
@@ -353,7 +481,10 @@ public abstract class Strabon {
 		} else if(format.equalsIgnoreCase("TURTLE") || format.equals(RDFFormat.TURTLE.getName())) {
 			realFormat =  RDFFormat.TURTLE;
 			
-		} else {
+		}else if(format.equalsIgnoreCase("NQUADS") || format.equals(RDFFormat.NQUADS.getName())) {
+			realFormat =  RDFFormat.NQUADS;
+		} 
+		else {
 			throw new InvalidDatasetFormatFault();
 		}
 
@@ -385,9 +516,74 @@ public abstract class Strabon {
 		logger.info("[Strabon.storeURL] Storing file.");
 		logger.info("[Strabon.storeURL] URL      : {}", url.toString());
 		logger.info("[Strabon.storeURL] Context  : {}", ((context == null) ? "default" : context));
-		logger.info("[Strabon.storeURL] Base URI : {}", ((baseURI == null) ? "null" : baseURI));
-		logger.info("[Strabon.storeURL] Format   : {}", ((format == null) ? "null" : format));
+		if (logger.isDebugEnabled()) {
+			logger.debug("[Strabon.storeURL] Base URI : {}", ((baseURI == null) ? url.toExternalForm() : baseURI));
+			logger.debug("[Strabon.storeURL] Format   : {}", ((format == null) ? "null" : format));
+		}
 
+		if(baseURI == null)
+		{
+			baseURI = url.toExternalForm();
+		}
+		
+		if(format.equals(RDFFormat.NQUADS))
+		{
+			String line;
+			InputStream in = (InputStream) url.openStream();
+			InputStreamReader reader = new InputStreamReader(in);
+			
+			StringBuilder batch=new StringBuilder();
+			int counter=0;
+			BufferedReader br = new BufferedReader(reader);
+			while ((line = br.readLine()) != null) {
+				counter++;
+				if(counter%LINES_IN_BATCH ==0 )
+				{
+					storeString(batch.toString(), baseURI, context, format);
+					batch = new StringBuilder();
+				}
+				else
+				{
+					batch.append("\n").append(line);
+				}
+			    
+			}
+			if(batch.length()>0)
+			{
+				storeString(batch.toString(), baseURI, context, format);
+			}
+		
+			/*NQuadsTranslator translator = new NQuadsTranslator();
+			Collection<Statement> statements = translator.translate(in, baseURI);
+			System.out.println("Translated NQUADS to NTRIPLES!");
+			Iterator iterator = statements.iterator();
+			StringReader quadGraphReader = new StringReader(translator.getHandledTriples().toString());
+			System.out.println("handled triples"+ translator.getHandledTriples().toString());
+			con1.add(quadGraphReader, "", RDFFormat.NTRIPLES);
+			for(Statement st: statements)
+			{
+				//edw prepei na mpei sunartisi pou na metasximatizei to context an einai temporal
+				try {
+					String cont = st.getContext().toString();
+					 String validPeriod= cont;
+					 if(!cont.contains(","))
+					 {
+						 int i = cont.indexOf('"')+1;
+						 int j = cont.lastIndexOf('"');
+						 validPeriod = "\"[" + cont.substring(i,j) + "," + cont.substring(i,j) + "]\"^^<"+TemporalConstants.PERIOD; 
+						 //validPeriod = cont.replace("]",","+cont.substring(i, j)+"]");
+						 
+					 }
+					Resource newContext = new NQuadsParser().createValidTimeURI(validPeriod);
+							con1.add(st.getSubject(), st.getPredicate(), st.getObject(), newContext);
+				} catch (ParseException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			*/
+			return;
+		}
 		if (context == null) {
 			con.add(url, baseURI, format);
 			
@@ -411,7 +607,54 @@ public abstract class Strabon {
 		logger.info("[Strabon.storeString] Format   : " + ((format == null) ? "null" : format.toString()));
 
 		StringReader reader = new StringReader(text);
+		if(format.equals(RDFFormat.NQUADS))
+		{
+			ByteArrayInputStream in = new ByteArrayInputStream(text.getBytes());
+			NQuadsTranslator translator = new NQuadsTranslator(con);
+						 
+			Collection<Statement> statements = translator.translate(in, baseURI);
+			Iterator iterator = statements.iterator();
+			Resource newContext = null;
+			
+			for(Statement st: statements)
+			{
+				if(st.getContext() == null)
+				{ //this statement of the NQUAD graph is a triple- (null context)
 
+					con.add(st.getSubject(), st.getPredicate(), st.getObject());
+
+				}
+				else //this statement of the NQUAD graph is a quad
+				{
+					String cont = st.getContext().toString();
+					 String validPeriod= cont;
+					 if(!cont.contains("\"")) //the fourth element is not a literal
+					 {
+						 newContext = st.getContext();
+					 }
+					 else
+					 {
+						 if(!cont.contains(","))
+						 {
+							 int i = cont.indexOf('"')+1;
+							 int j = cont.lastIndexOf('"');
+							 validPeriod = "\"[" + cont.substring(i,j) + "," + cont.substring(i,j) + "]\"^^<"+TemporalConstants.PERIOD; 				 
+						 }	 
+						try {
+							 newContext = new NQuadsParser().createValidTimeURI(validPeriod);
+						} catch (ParseException e) {
+							logger.error(this.getClass().toString()+": error when constructing the new context");
+							e.printStackTrace();
+						}
+					 }
+						
+					 con.add(st.getSubject(), st.getPredicate(), st.getObject(), newContext);
+		
+				}
+			}
+			return;
+		}
+		
 		if (context == null) {
 			con.add(reader, baseURI, format);
 			
