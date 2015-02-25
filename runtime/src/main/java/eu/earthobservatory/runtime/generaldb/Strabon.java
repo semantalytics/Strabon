@@ -224,7 +224,7 @@ public abstract class Strabon {
 	public Object query(String queryString, Format resultsFormat, SailRepositoryConnection con, OutputStream out)
 	throws MalformedQueryException, QueryEvaluationException, IOException, TupleQueryResultHandlerException {
 		boolean status = true;
-		
+						
 		logger.info("[Strabon.query] Executing query: {}", queryString);
 		
 		// check for null stream
@@ -265,7 +265,7 @@ public abstract class Strabon {
 
 				logger.info((t2-t1)+" + "+(t3-t2)+" = "+(t3-t1)+" | "+results);
 				return new long[]{t2-t1, t3-t2, t3-t1, results};
-//				break;
+				//break;
 			
 			case TUQU:
 				
@@ -356,7 +356,7 @@ public abstract class Strabon {
 		} else {
 			throw new InvalidDatasetFormatFault();
 		}
-
+		
 		try{
 			URL source = new URL(src);
 			storeURL(source, baseURI, uriContext, realFormat);
@@ -368,7 +368,8 @@ public abstract class Strabon {
 				storeURL(fromClasspath, baseURI, uriContext, realFormat);
 				
 			} else {
-				File file = new File(src);
+				
+				File file = new File(src);			
 				if (file.exists()) {
 					storeURL(new URL("file://" + src), baseURI, uriContext, realFormat);
 
@@ -393,6 +394,7 @@ public abstract class Strabon {
 			
 		} else {
 			con.add(url, baseURI, format, context);
+				
 		}
 		
 		logger.info("[Strabon.storeURL] Storing was successful.");
