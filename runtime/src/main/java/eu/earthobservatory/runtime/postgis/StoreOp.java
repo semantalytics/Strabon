@@ -37,6 +37,7 @@ public class StoreOp {
 		String graph = null;
 		Boolean inference = false;
 		
+		
 		for (int i = 6; i < args.length; i += 2) {
 			if (args[i].equals("-f")) {
 				if (i + 1 >= args.length) {

@@ -130,6 +130,7 @@
 		<module>runtime</module>
 		<module>postgis</module>
 		<module>monetdb</module>
+		<module>sqlite</module>
 		<module>generaldb</module>
 		<module>resultio-spatial</module>
 		<module>endpoint</module>
@@ -271,6 +272,12 @@
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-sail-postgis</artifactId>
+				<version>${eu.earthobservatory.version}</version>
+			</dependency>
+			
+			<dependency>
+				<groupId>org.openrdf.sesame</groupId>
+				<artifactId>sesame-sail-sqlite</artifactId>
 				<version>${eu.earthobservatory.version}</version>
 			</dependency>
 

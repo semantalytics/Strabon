@@ -48,7 +48,7 @@ import org.openrdf.rio.RDFParseException;
 import org.sqlite.SQLiteConfig;
 
 import eu.earthobservatory.runtime.generaldb.InvalidDatasetFormatFault;
-import eu.earthobservatory.runtime.postgis.Strabon;
+import eu.earthobservatory.runtime.sqlite.Strabon;
 import eu.earthobservatory.utils.Format;
 
 /**
@@ -57,16 +57,15 @@ import eu.earthobservatory.utils.Format;
  * @author Panayiotis Smeros <psmeros@di.uoa.gr>
  * @author Dimitrianos Savva <dimis@di.uoa.gr>
  */
-public class Utils
+public class UtilsSqlite
 {
 	private static final String dbPropertiesFile=File.separator+"databases.properties";
 	private static final String prefixesFile=File.separator+"prefixes";
 	
 	private static String databaseTemplateName = null;
 	private static String serverName = null;
-	private static String username = null;
-	private static String password = null;
-	private static String port = null;
+	private static String pcre = null;
+	private static String libspatial = null;
 	
 	private static Connection conn = null;
 	private static String databaseName = null;
@@ -78,68 +77,33 @@ public class Utils
 		String url="";
 		ArrayList<String> databases=new ArrayList<String>();
         PreparedStatement pst = null;
-		
-		//Read properties
-		Properties properties = new Properties();
+        
+        Properties properties = new Properties();
 		InputStream propertiesStream =  Utils.class.getResourceAsStream(dbPropertiesFile);
 		properties.load(propertiesStream);
 
-		if((databaseTemplateName = System.getProperty("postgis.databaseTemplateName"))==null)
+		if((pcre = System.getProperty("sqlite.pcre"))==null)
 		{
-			databaseTemplateName = properties.getProperty("postgis.databaseTemplateName");
+			pcre = properties.getProperty("sqlite.pcre");
 		}
 		
-		if((serverName = System.getProperty("postgis.serverName"))==null)
+		if((libspatial = System.getProperty("sqlite.libspatialite"))==null)
 		{
-			serverName = properties.getProperty("postgis.serverName");
+			libspatial = properties.getProperty("sqlite.libspatialite");
 		}
-		
-		if((username = System.getProperty("postgis.username"))==null)
-		{
-			username = properties.getProperty("postgis.username");
-		}
-		
-		if((password = System.getProperty("postgis.password"))==null)
-		{
-			password = properties.getProperty("postgis.password");
-		}
-
-		if((port = System.getProperty("postgis.port"))==null)
-		{
-			port = properties.getProperty("postgis.port");
-		}
-		
+				
 		//Connect to server and create the temp database
-		url = "jdbc:postgresql://"+serverName+":"+port;
-		conn = DriverManager.getConnection(url, username, password);
-		
-        pst = conn.prepareStatement("SELECT * FROM pg_catalog.pg_database");
-        ResultSet rs = pst.executeQuery();
-
-        while (rs.next())
-        {
-        	databases.add(rs.getString(1));
-        }
-        rs.close();
-        pst.close();
-   
-        databaseName="teststrabon"+(int)(Math.random()*10000);
-        while(databases.contains(databaseName))
-        {
-        	databaseName+="0";
-        }
-    
-		pst = conn.prepareStatement("CREATE DATABASE "+databaseName+" TEMPLATE " + databaseTemplateName);
-		pst.executeUpdate();
-		pst.close();
-		conn.close();
-
-		url = "jdbc:postgresql://"+serverName+":"+port+"/"+databaseName;
-		conn = DriverManager.getConnection(url, username, password);
-		
-	    strabon = new Strabon(databaseName, username, password, Integer.parseInt(port), serverName, true);
+        databaseName ="/tmp/"+ (int)(Math.random()*10000)+".db" ;
+        System.out.println(databaseName);
+        
+        //TODO check if the database db already exists
+        //while(databases.contains(db))
+        //{
+        //	db+="0";
+        //}
+     
+		strabon = new eu.earthobservatory.runtime.sqlite.Strabon(databaseName, libspatial, pcre, false);
 	}
-	
 	
 	public static void storeDataset(String datasetFile, Boolean inference) throws RDFParseException, RepositoryException, RDFHandlerException, IOException, InvalidDatasetFormatFault
 	{
@@ -153,14 +117,14 @@ public class Utils
 	public static void testQuery(String queryFile, String resultsFile, boolean orderOn) throws IOException, MalformedQueryException, QueryEvaluationException, TupleQueryResultHandlerException, URISyntaxException, QueryResultParseException, UnsupportedQueryResultFormatException
 	{
 		ByteArrayOutputStream resultsStream = new ByteArrayOutputStream();
-		String query = FileUtils.readFileToString(new File(Utils.class.getResource(prefixesFile).toURI()))+"\n"+FileUtils.readFileToString(new File(Utils.class.getResource(queryFile).toURI()));
+		String query = FileUtils.readFileToString(new File(UtilsSqlite.class.getResource(prefixesFile).toURI()))+"\n"+FileUtils.readFileToString(new File(UtilsSqlite.class.getResource(queryFile).toURI()));
 		
 		//Pose the query
 		strabon.query(query, Format.XML, strabon.getSailRepoConnection(), resultsStream);
 		
 		//Check if the results of the query are the expected
 		compareResults(queryFile, orderOn, 
-					   QueryResultIO.parse(Utils.class.getResourceAsStream(resultsFile), TupleQueryResultFormat.SPARQL),
+					   QueryResultIO.parse(UtilsSqlite.class.getResourceAsStream(resultsFile), TupleQueryResultFormat.SPARQL),
 					   QueryResultIO.parse((new ByteArrayInputStream(resultsStream.toByteArray())), TupleQueryResultFormat.SPARQL));
 	}
 	
@@ -220,13 +184,14 @@ public class Utils
 		strabon.close();
 		
 		//Drop the temp database
-		conn.close();
-		String url = "jdbc:postgresql://"+serverName+":"+port;
-		conn = DriverManager.getConnection(url, username, password);
-		
-		PreparedStatement pst = conn.prepareStatement("DROP DATABASE "+databaseName);
-		pst.executeUpdate();
-		pst.close();
+		//delete the database file
+		/*File file = new File(databaseName);
+ 
+    	if(file.delete()){
+    		System.out.println(file.getName() + " is deleted!");
+    	}else{
+    		System.out.println("Delete operation is failed.");
+    	}*/
 		conn.close();
 	}
 }

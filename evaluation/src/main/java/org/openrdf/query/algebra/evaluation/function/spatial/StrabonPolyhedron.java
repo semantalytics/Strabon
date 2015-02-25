@@ -30,6 +30,8 @@ import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.impl.CoordinateArraySequence;
 import com.vividsolutions.jts.io.ParseException;
 
+import eu.earthobservatory.constants.GeoConstants;
+
 /**
  * A {@link StrabonPolyhedron} is a {@link Value} that is used to represent geometries.
  * Therefore, a {@link StrabonPolyhedron} wraps around the construct of an RDF {@link Value}
@@ -96,6 +98,7 @@ public class StrabonPolyhedron implements Value {
 		this.geometry = geo;
 		this.geometry.setSRID(srid);
 	}
+	
 	
 	/**
 	 * Creates a {@link StrabonPolyhedron} instance with the given geometry.
@@ -401,7 +404,7 @@ public class StrabonPolyhedron implements Value {
 	 * 
 	 * @return
 	 */
-	protected String toWKT() {
+	public String toWKT() {
 		return jts.WKTwrite(this.geometry);		
 	}
 	
