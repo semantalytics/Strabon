@@ -1,3 +1,7 @@
+Wed Mar 11 21:02:48 2015   Pyravlos Team
+
+	* Version 3.3.1 released.
+
 	* Bug #58, added script that is invoked my maven to also update the
 	  version described in the deb/control file of the runtime and
 	  endpoint-exec components.
