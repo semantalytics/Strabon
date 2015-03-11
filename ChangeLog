@@ -1,3 +1,7 @@
+	* Bug #58, added script that is invoked my maven to also update the
+	  version described in the deb/control file of the runtime and
+	  endpoint-exec components.
+
 	* Related to bug #58, but it generally enhances Strabon; The runtime
 	  component has also been debianized. Dependencies are added to
 	  /usr/share/jdeb/lib/strabon-runtime. ClassPath and strabon script

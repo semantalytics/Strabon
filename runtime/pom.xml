@@ -443,6 +443,25 @@
 			</activation>
 				<build>
 					<plugins>
+<plugin>
+                                                    <groupId>org.codehaus.mojo</groupId>
+                                                    <artifactId>exec-maven-plugin</artifactId>
+                                                    <version>1.1.1</version>
+                                                    <executions>
+                                                      <execution>
+                                                        <!--
+                                                        <id>some-execution</id>
+                                                        -->
+                                                        <phase>package</phase>
+                                                        <goals>
+                                                          <goal>exec</goal>
+                                                        </goals>
+                                                      </execution>
+                                                    </executions>
+                                                    <configuration>
+                                                      <executable>${basedir}/../scripts/update-debian-version.sh</executable>
+                                                    </configuration>
+                                                  </plugin>
 						<plugin>
                                 <artifactId>jdeb</artifactId>
                                 <groupId>org.vafer</groupId>
