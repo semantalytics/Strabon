@@ -1,4 +1,4 @@
-Package: Strabon
+Package: strabon-cmd
 Version: 3.2.11-SNAPSHOT
 Section: strabon-cmd
 Priority: optional

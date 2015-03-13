@@ -1,4 +1,4 @@
-Package: Strabon
+Package: strabon-endpoint
 Version: 3.2.11-SNAPSHOT
 Section: strabon-endpoint
 Priority: optional
