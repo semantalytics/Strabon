@@ -1,5 +1,5 @@
 Package: strabon-endpoint
-Version: 3.2.11-SNAPSHOT
+Version: 3.3.2-SNAPSHOT
 Section: strabon-endpoint
 Priority: optional
 Architecture: all

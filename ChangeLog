@@ -1,4 +1,8 @@
 Wed Mar 11 21:02:48 2015   Pyravlos Team
+	
+	* Update jar references on scripts used by the debian packaging.
+	  Previously these references pointed only (incorrectly) to
+	  SNAPSHOTs.
 
 	* Updated package names (since repositories cannot include capital
 	  letters + runtime and endpoint-exec must have different names

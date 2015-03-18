@@ -1,4 +1,4 @@
 #!/bin/bash
 
-java -jar /usr/share/jdeb/lib/strabon-endpoint-executable-*-SNAPSHOT.jar "$@"
+java -jar /usr/share/jdeb/lib/strabon-endpoint-executable-*.jar "$@"
 
