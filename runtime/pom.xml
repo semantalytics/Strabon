@@ -16,7 +16,7 @@
 
 	<dependencies>
 
-		<!-- Core dependencies -->
+		<!-- Core Dependencies -->
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-repository-sail</artifactId>
@@ -41,7 +41,7 @@
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-queryalgebra-evaluation-spatial</artifactId>
 		</dependency>
-		<!-- Core dependencies -->
+		<!-- Core Dependencies -->
 		
 		<!-- rio API -->
 		<dependency>
