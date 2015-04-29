@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
 
@@ -15,35 +16,17 @@
 	<packaging>jar</packaging>
 
 	<dependencies>
-
-		<!-- Core Dependencies -->
+		<!-- Sesame Dependencies -->
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-repository-sail</artifactId>
+			<artifactId>sesame-queryparser-api</artifactId>
 		</dependency>
 
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-sail-postgis</artifactId>
+			<artifactId>sesame-queryparser-sparql</artifactId>
 		</dependency>
-
-		<dependency>
-			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-sail-monetdb</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-sail-generaldb</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-queryalgebra-evaluation-spatial</artifactId>
-		</dependency>
-		<!-- Core Dependencies -->
 		
-		<!-- rio API -->
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-rio-rdfxml</artifactId>
@@ -77,43 +60,80 @@
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-rio-binary</artifactId>
+		</dependency>		
+		<!-- Sesame Dependencies -->
+		
+		<!-- Core Dependencies -->
+		<dependency>
+			<groupId>org.openrdf.sesame</groupId>
+			<artifactId>sesame-repository-sail</artifactId>
 		</dependency>
-		<!-- rio API -->
 
-		<!-- Query results -->
+		<dependency>
+			<groupId>org.openrdf.sesame</groupId>
+			<artifactId>sesame-sail-postgis</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.openrdf.sesame</groupId>
+			<artifactId>sesame-sail-monetdb</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.openrdf.sesame</groupId>
+			<artifactId>sesame-sail-generaldb</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.openrdf.sesame</groupId>
+			<artifactId>sesame-queryalgebra-evaluation-spatial</artifactId>
+		</dependency>
+
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-queryresultio-spatial-api</artifactId>
 		</dependency>
+		
+		<dependency>
+			<groupId>org.openrdf.sesame</groupId>
+			<artifactId>sesame-queryresultio-spatial-api</artifactId>
+		</dependency>
+		
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-queryresultio-spatial-sparqlgeojson</artifactId>
 		</dependency>
+		
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-queryresultio-spatial-sparqlkml</artifactId>
 		</dependency>
+		
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-queryresultio-spatial-sparqlxml</artifactId>
 		</dependency>
+		
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-queryresultio-spatial-sparqlhtml</artifactId>
 		</dependency>
+		
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-queryresultio-spatial-text</artifactId>
 		</dependency>
+		
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-queryresultio-sparqljson</artifactId>
 		</dependency>
+		
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-queryresultio-binary</artifactId>
-		</dependency>
-		<!-- Query results -->
+		</dependency>		
+		<!-- Core Dependencies -->
 	</dependencies>
 
 	<build>
@@ -202,7 +222,7 @@
 		</plugins>
 	</build>
 
-<profiles>
+	<profiles>
 		<profile>
 			<id>create-debian</id>
 			<activation>
@@ -212,68 +232,66 @@
 					<value>true</value>
 				</property>
 			</activation>
-				<build>
-					<plugins>
-<plugin>
-                                                    <groupId>org.codehaus.mojo</groupId>
-                                                    <artifactId>exec-maven-plugin</artifactId>
-                                                    <version>1.1.1</version>
-                                                    <executions>
-                                                      <execution>
-                                                        <!--
-                                                        <id>some-execution</id>
-                                                        -->
-                                                        <phase>package</phase>
-                                                        <goals>
-                                                          <goal>exec</goal>
-                                                        </goals>
-                                                      </execution>
-                                                    </executions>
-                                                    <configuration>
-                                                      <executable>${basedir}/../scripts/update-debian-version.sh</executable>
-                                                    </configuration>
-                                                  </plugin>
-						<plugin>
-                                <artifactId>jdeb</artifactId>
-                                <groupId>org.vafer</groupId>
-                                <version>1.3</version>
-                                <executions>
-                                        <execution>
-                                                <phase>package</phase>
-                                                <goals>
-                                                        <goal>jdeb</goal>
-                                                </goals>
-                                        <configuration>
-						<skipPOMs>false</skipPOMs>
-                                                <dataSet>
-                                                        <data>
-                                                                <src>${project.build.directory}</src>
-                                                                <type>directory</type>
-								<includes>**/</includes>
-                                                                <mapper>
-                                                                        <type>perm</type>
-                                                                        <prefix>/usr/share/jdeb/lib/strabon-runtime</prefix>
-                                                                </mapper>
-                                                        </data>
-                                                        <data>
-                                                                <src>${basedir}/strabon-cmd</src>
-                                                                <type>file</type>
-                                                                <mapper>
-                                                                        <type>perm</type>
-                                                                        <prefix>/usr/local/bin</prefix>
-                                                                        <user>root</user>
-                                                                        <group>root</group>
-                                                                        <filemode>755</filemode>
-                                                                </mapper>
-                                                        </data>
-                                                </dataSet>
-                                        </configuration>
-                                </execution>
-                        </executions>
-                        </plugin>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>exec-maven-plugin</artifactId>
+						<version>1.1.1</version>
+						<executions>
+							<execution>
+								<!-- <id>some-execution</id> -->
+								<phase>package</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<executable>${basedir}/../scripts/update-debian-version.sh</executable>
+						</configuration>
+					</plugin>
+					<plugin>
+						<artifactId>jdeb</artifactId>
+						<groupId>org.vafer</groupId>
+						<version>1.3</version>
+						<executions>
+							<execution>
+								<phase>package</phase>
+								<goals>
+									<goal>jdeb</goal>
+								</goals>
+								<configuration>
+									<skipPOMs>false</skipPOMs>
+									<dataSet>
+										<data>
+											<src>${project.build.directory}</src>
+											<type>directory</type>
+											<includes>**/</includes>
+											<mapper>
+												<type>perm</type>
+												<prefix>/usr/share/jdeb/lib/strabon-runtime</prefix>
+											</mapper>
+										</data>
+										<data>
+											<src>${basedir}/strabon-cmd</src>
+											<type>file</type>
+											<mapper>
+												<type>perm</type>
+												<prefix>/usr/local/bin</prefix>
+												<user>root</user>
+												<group>root</group>
+												<filemode>755</filemode>
+											</mapper>
+										</data>
+									</dataSet>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
 
-					</plugins>
-				</build>
+				</plugins>
+			</build>
 
 		</profile>
 	</profiles>

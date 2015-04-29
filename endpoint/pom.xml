@@ -79,6 +79,18 @@
 			</exclusions>
 		</dependency>
 		<!-- Spring framework -->
+
+		<!-- JDBC Drivers -->
+		<dependency>
+			<groupId>postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>monetdb</groupId>
+			<artifactId>jdbcclient</artifactId>
+		</dependency>
+		<!-- JDBC Drivers -->
 	</dependencies>
 
 	<build>
