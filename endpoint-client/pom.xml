@@ -17,10 +17,6 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-rio-api</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-queryresultio-spatial-api</artifactId>
 		</dependency>
 		
