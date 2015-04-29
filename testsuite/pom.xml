@@ -20,12 +20,21 @@
 			<artifactId>strabon-runtime</artifactId>
 		</dependency>
  
-		<!-- Testing: JUnit -->
+ 		<!-- Apache Commons -->
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+		</dependency>
+		<!-- Apache Commons -->
+		
+		<!-- JUnit -->
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<scope>test</scope>
 		</dependency>	
+		<!-- JUnit -->
+
 	</dependencies>
 
 </project>
