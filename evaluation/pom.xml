@@ -15,7 +15,7 @@
 	<packaging>jar</packaging>
 
 	<dependencies>
-		<!-- Core Dependencies -->	
+	
 		<dependency>
 			<groupId>eu.earthobservatory</groupId>
 			<artifactId>strabon-vocabulary</artifactId>
@@ -35,16 +35,17 @@
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-model</artifactId>
 		</dependency>
-		<!-- Core Dependencies -->
 
-		<!-- Logger -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-log4j12</artifactId>
 		</dependency>
-		<!-- Logger -->
-				
-		<!-- Geotools -->
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+		</dependency>
+
 		<dependency>
 			<groupId>org.geotools</groupId>
 			<artifactId>gt-opengis</artifactId>
@@ -64,10 +65,15 @@
 			<artifactId>gt-xml</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.jvnet.ogc</groupId>
-			<artifactId>ogc-tools-gml-jts</artifactId>
-		</dependency>
-		<!-- Geotools -->
+	<groupId>org.jvnet.ogc</groupId>
+	<artifactId>ogc-tools-gml-jts</artifactId>
+</dependency>
+<dependency>
+	<groupId>com.sun.xml.bind</groupId>
+	<artifactId>jaxb-impl</artifactId>
+</dependency>
 	</dependencies>
+	<modules>
+	</modules>
 </project>
 
