@@ -1,5 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
@@ -19,8 +18,12 @@
 	</properties>
 
 	<dependencies>
+		<dependency>
+			<groupId>javax</groupId>
+			<artifactId>javaee-web-api</artifactId>
+			<scope>provided</scope>
+		</dependency>
 
-		<!-- Core Dependencies -->
 		<dependency>
 			<groupId>eu.earthobservatory</groupId>
 			<artifactId>strabon-vocabulary</artifactId>
@@ -31,31 +34,51 @@
 			<artifactId>strabon-runtime</artifactId>
 			<type>jar</type>
 			<scope>compile</scope>
+			<exclusions>
+				<exclusion>
+					<artifactId>servlet-api-2.5</artifactId>
+					<groupId>org.mortbay.jetty</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>jsp-api-2.1</artifactId>
+					<groupId>org.mortbay.jetty</groupId>
+				</exclusion>
+			</exclusions>
 		</dependency>
-		<!-- Core Dependencies -->
+ 		
+		<!-- GeoTools -->
+		<dependency>
+			<groupId>org.geotools.xsd</groupId>
+			<artifactId>gt-xsd-kml</artifactId>
+		</dependency>
 
-		<!-- Java -->
 		<dependency>
-			<groupId>javax</groupId>
-			<artifactId>javaee-web-api</artifactId>
-			<scope>provided</scope>
+			<groupId>org.geotools</groupId>
+			<artifactId>gt-xml</artifactId>
 		</dependency>
-		<!-- Java -->
 
-		<!-- Apache Commons -->
 		<dependency>
-			<groupId>commons-fileupload</groupId>
-			<artifactId>commons-fileupload</artifactId>
+			<groupId>org.geotools</groupId>
+			<artifactId>gt-epsg-hsql</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
+			<groupId>org.geotools</groupId>
+			<artifactId>gt-shapefile</artifactId>
 		</dependency>
+
+		<!-- Testing: JUnit -->
 		<dependency>
-			<groupId>commons-codec</groupId>
-			<artifactId>commons-codec</artifactId>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
 		</dependency>
-		<!-- Apache Commons -->
+
+		<!-- JDBC Drivers -->
+
+		<dependency>
+			<groupId>postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+		</dependency>
 
 		<!-- Spring framework -->
 		<dependency>
@@ -78,19 +101,11 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-		<!-- Spring framework -->
-
-		<!-- JDBC Drivers -->
-		<dependency>
-			<groupId>postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-		</dependency>
 
 		<dependency>
-			<groupId>monetdb</groupId>
-			<artifactId>jdbcclient</artifactId>
+			<groupId>commons-validator</groupId>
+			<artifactId>commons-validator</artifactId>
 		</dependency>
-		<!-- JDBC Drivers -->
 	</dependencies>
 
 	<build>
@@ -193,13 +208,32 @@
 						</archive> -->
 				</configuration>
 			</plugin>
-			<!-- <plugin> <groupId>org.eclipse.m2e</groupId> <artifactId>lifecycle-mapping</artifactId> 
-				<version>1.0.0</version> <configuration> <lifecycleMappingMetadata> <pluginExecutions> 
-				<pluginExecution> <pluginExecutionFilter> <groupId>org.apache.maven.plugins</groupId> 
-				<artifactId>maven-dependency-plugin</artifactId> <versionRange>[2.1,)</versionRange> 
-				<goals> <goal>copy-dependencies</goal> </goals> </pluginExecutionFilter> 
-				<action> <ignore /> </action> </pluginExecution> </pluginExecutions> </lifecycleMappingMetadata> 
-				</configuration> </plugin> -->
+			<!--
+			<plugin>
+				<groupId>org.eclipse.m2e</groupId>
+				<artifactId>lifecycle-mapping</artifactId>
+				<version>1.0.0</version>
+				<configuration>
+					<lifecycleMappingMetadata>
+						<pluginExecutions>
+							<pluginExecution>
+								<pluginExecutionFilter>
+									<groupId>org.apache.maven.plugins</groupId>
+									<artifactId>maven-dependency-plugin</artifactId>
+									<versionRange>[2.1,)</versionRange>
+									<goals>
+										<goal>copy-dependencies</goal>
+									</goals>
+								</pluginExecutionFilter>
+								<action>
+									<ignore />
+								</action>
+							</pluginExecution>
+						</pluginExecutions>
+						</lifecycleMappingMetadata>
+				</configuration>
+			</plugin>
+			-->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
