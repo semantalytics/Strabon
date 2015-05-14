@@ -1872,7 +1872,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 		filter.closeBracket();
 	}
 
-	//Buffer function
+	//Buffer function (Giannis: dont get deceived by "filter". It also applies for the case the buffer occurs in the select clause too)
 	protected void appendBuffer(TripleGeneralDBOperator expr, GeneralDBSqlExprBuilder filter, SpatialFunctionsPostGIS func) throws UnsupportedRdbmsOperatorException
 	{
 		boolean sridNeeded = true;
@@ -1941,7 +1941,7 @@ public class PostGISQueryBuilder extends GeneralDBQueryBuilder {
 					}
 					else if (tmp instanceof GeneralDBStringValue) //Constant!!
 					{
-						sridNeeded  = false;
+						sridNeeded  = true;
 						sridExpr = String.valueOf(WKTHelper.getSRID(((GeneralDBStringValue) tmp).getValue()));
 						break;
 					}
