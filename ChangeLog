@@ -1,5 +1,9 @@
 Wed Mar 11 21:02:48 2015   Pyravlos Team
 	
+	* Bug #73, modified appendBuffer function to take the srid into
+	  consideration even if the argument is a constant (wktLiteral
+	  or strdf literal)
+
 	* Update jar references on scripts used by the debian packaging.
 	  Previously these references pointed only (incorrectly) to
 	  SNAPSHOTs.
