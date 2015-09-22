@@ -114,7 +114,7 @@ public class Strabon extends eu.earthobservatory.runtime.generaldb.Strabon {
 			throw e;
 			
 		} catch (ClassNotFoundException e) {
-			logger.error("[Strabon.isLocked] Could not load postgres jdbc driver: {}", e.getMessage());
+			logger.error("[Strabon.isLocked] Could not load MonetDB jdbc driver: {}", e.getMessage());
 			throw e;
 			
 		} finally {
