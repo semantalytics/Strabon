@@ -18,7 +18,7 @@ import org.openrdf.query.algebra.evaluation.impl.CompareOptimizer;
 import org.openrdf.query.algebra.evaluation.impl.ConjunctiveConstraintSplitter;
 import org.openrdf.query.algebra.evaluation.impl.DisjunctiveConstraintOptimizer;
 import org.openrdf.query.algebra.evaluation.impl.SameTermFilterOptimizer;
-import org.openrdf.query.algebra.evaluation.impl.SpatialJoinOptimizer;
+import org.openrdf.query.algebra.evaluation.impl.TemporalJoinOptimizer;
 import org.openrdf.query.algebra.evaluation.impl.stSPARQLConstantOptimizer;
 import org.openrdf.sail.generaldb.GeneralDBValueFactory;
 import org.openrdf.sail.generaldb.schema.BNodeTable;
@@ -47,6 +47,10 @@ public class GeneralDBQueryOptimizer {
 	
 	//Addition to locate duplicate filters caused by the SpatialJoinOptimizer
 	List<TupleExpr> spatialJoins = new ArrayList<TupleExpr>();
+	
+	//same applies for temporal joins
+	List<TupleExpr> temporalJoins = new ArrayList<TupleExpr>();
+
 	//
 	
 	public void setSelectQueryOptimizerFactory(GeneralDBSelectQueryOptimizerFactory factory) {
@@ -112,13 +116,18 @@ public class GeneralDBQueryOptimizer {
 		new SameTermFilterOptimizer().optimize(expr, dataset, bindings);
 
 		//XXX
-		new SpatialJoinOptimizer().optimize(expr, dataset, bindings,spatialJoins);
+	
+		new TemporalJoinOptimizer().optimize(expr, dataset, bindings, spatialJoins, temporalJoins);
+		
+		//new SpatialJoinOptimizer().optimize(expr, dataset, bindings,spatialJoins);
+		
 	}
 
 	protected void rdbmsOptimizations(TupleExpr expr, Dataset dataset, BindingSet bindings) {
 		new GeneralDBValueIdLookupOptimizer(vf).optimize(expr, dataset, bindings);
-		factory.createRdbmsFilterOptimizer().optimize(expr, dataset, bindings,spatialJoins);
+		factory.createRdbmsFilterOptimizer().optimize(expr, dataset, bindings,spatialJoins, temporalJoins);
 		this.spatialJoins.clear();
+		this.temporalJoins.clear(); 
 		new GeneralDBVarColumnLookupOptimizer().optimize(expr, dataset, bindings);
 		GeneralDBValueJoinOptimizer valueJoins = new GeneralDBValueJoinOptimizer();
 		valueJoins.setBnodeTable(bnodes);
@@ -129,5 +138,4 @@ public class GeneralDBQueryOptimizer {
 
 		new GeneralDBRegexFlagsInliner().optimize(expr, dataset, bindings);
 	}
-
 }

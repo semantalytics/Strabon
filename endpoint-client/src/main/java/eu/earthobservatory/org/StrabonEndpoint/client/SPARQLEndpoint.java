@@ -36,10 +36,10 @@ import org.openrdf.rio.RDFFormat;
  * @author Charalampos Nikolaou <charnik@di.uoa.gr>
  * @author Kallirroi Dogani <kallirroi@di.uoa.gr.
  */
-public class SPARQLEndpoint extends HTTPClient{
+public class SPARQLEndpoint extends HTTPClient {
 
 	public SPARQLEndpoint(String host, int port) {
-		super(host, port);
+		this(host, port, "");
 	}
 	
 	public SPARQLEndpoint(String host, int port, String endpointName) {
@@ -355,7 +355,6 @@ public class SPARQLEndpoint extends HTTPClient{
 	public EndpointResult ask(String sparqlAsk) {
 		throw new UnsupportedOperationException();
 	}
-	
 	
 	public static void main(String args[]) {
 		if (args.length < 4) {

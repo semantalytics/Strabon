@@ -35,7 +35,7 @@ public class GeneralDBColumnVar implements Cloneable {
 
 	private String alias;
 
-	
+	private boolean temporal = false;
 
 	private String column;
 
@@ -117,10 +117,12 @@ public class GeneralDBColumnVar implements Cloneable {
 	
 	/**
 	 * Extra constructor to use in spatial cases
+	 * Constant: Deprecated this constructor, because isSpatial is not the only one boolean member of the class now. 
+	 * Use setSpatial and setTemporal for both cases from now on
 	 * @param isSpatial
 	 * @return
 	 */
-	public static GeneralDBColumnVar createObj(String alias, Var v, Value value, boolean isSpatial) {
+	/*public static GeneralDBColumnVar createObj(String alias, Var v, Value value, boolean isSpatial) {
 		GeneralDBColumnVar var = new GeneralDBColumnVar();
 		var.alias = alias;
 		var.column = "obj";
@@ -139,7 +141,7 @@ public class GeneralDBColumnVar implements Cloneable {
 		
 		return var;
 	}
-
+*/
 	public static GeneralDBColumnVar createCtx(String alias, Var v, Resource resource) {
 		GeneralDBColumnVar var = new GeneralDBColumnVar();
 		var.alias = alias;
@@ -160,8 +162,24 @@ public class GeneralDBColumnVar implements Cloneable {
 		}
 		return var;
 	}
-
+//creates a temporal ColumnVar
 	
+	public static GeneralDBColumnVar createTemporalColumn(String alias, Var v, Value value) {
+		GeneralDBColumnVar var = new GeneralDBColumnVar();
+		var.alias = alias;
+		var.column = "id";
+		var.name = v.getName();
+		var.anonymous = v.isAnonymous();
+		var.value = value;
+		var.types = ValueTypes.UNKNOWN;
+		if (value instanceof RdbmsResource) {
+			var.types = ValueTypes.RESOURCE;
+		}
+		
+		var.setTemporal(true);
+		
+		return var;
+	}
 	
 	public boolean isSpatial() {
 		return spatial;
@@ -301,5 +319,14 @@ public class GeneralDBColumnVar implements Cloneable {
 
 		return sb.toString();
 	}
+
+	public boolean isTemporal() {
+		return temporal;
+	}
+
+	public void setTemporal(boolean temporal) {
+		this.temporal = temporal;
+	}
+	
 
 }

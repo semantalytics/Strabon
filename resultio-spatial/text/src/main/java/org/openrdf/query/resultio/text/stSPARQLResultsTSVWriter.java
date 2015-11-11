@@ -15,13 +15,18 @@ import java.io.OutputStream;
 import org.openrdf.model.Value;
 import org.openrdf.model.impl.LiteralImpl;
 import org.openrdf.model.impl.URIImpl;
+import org.openrdf.query.algebra.evaluation.function.spatial.StrabonInstant;
+import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPeriod;
 import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
 import org.openrdf.query.algebra.evaluation.function.spatial.WKTHelper;
+import org.openrdf.query.algebra.evaluation.function.spatial.StrabonTemporalElement;
+import eu.earthobservatory.constants.TemporalConstants;
 import org.openrdf.query.resultio.text.tsv.SPARQLResultsTSVWriter;
 import org.openrdf.sail.generaldb.model.GeneralDBPolyhedron;
 
 /**
  * @author Charalampos Nikolaou <charnik@di.uoa.gr>
+ * @author Konstantina Bereta <Konstantina.Bereta@di.uoa.gr> (extensions for the temporal case)
  * 
  */
 public class stSPARQLResultsTSVWriter extends SPARQLResultsTSVWriter {
@@ -32,6 +37,8 @@ public class stSPARQLResultsTSVWriter extends SPARQLResultsTSVWriter {
 
 	@Override
 	protected void writeValue(Value val) throws IOException {
+		if (val.stringValue()== null)
+			return;
 		if (val instanceof GeneralDBPolyhedron) {
 			// catch the spatial case and create a new literal
 			// constructing a new literal is the only way if we want to reuse the {@link #writeValue(Value)} method
@@ -45,8 +52,13 @@ public class stSPARQLResultsTSVWriter extends SPARQLResultsTSVWriter {
 					  								  poly.getGeometryDatatype().toString()), 
 					  			  new URIImpl(poly.getGeometryDatatype().toString()));
 		}
+		else if(val instanceof StrabonTemporalElement){
+			//creating a temporal literal, which is either a period or an instant
+			
+			val = new LiteralImpl(((StrabonTemporalElement)val).stringValue(), ((StrabonTemporalElement) val).getDatatype());
+		}
 		
-		// write value
+		// write value		
 		super.writeValue(val);
 		
 	}
