@@ -395,48 +395,60 @@
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-api</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-rdfxml</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
+			</dependency>
+			
+			
+			<dependency>
+				<groupId>org.openrdf.sesame</groupId>
+				<artifactId>sesame-rio</artifactId>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-ntriples</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-turtle</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-trig</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-trix</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-n3</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
 			</dependency>
 
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-rio-binary</artifactId>
-				<version>${sesame.version}</version>
+				<version>2.6.9</version>
+			</dependency>
+			<dependency>
+				<groupId>org.openrdf.sesame</groupId>
+				<artifactId>sesame-rio-api</artifactId>
+				<version>2.6.9</version>
 			</dependency>
 
 			<!-- GeoTools -->
@@ -941,7 +953,7 @@
 	            <name>Strabon - maven repository - sesame artifacts (temporary)</name>
 	            <url>http://maven.strabon.di.uoa.gr/content/repositories/strabon.sesame/</url>
 	        </repository>
-		<repository>
+		 <repository>
 			<releases>
 				<enabled>false</enabled>
 			</releases>
@@ -964,6 +976,17 @@
 			<url>http://repo.aduna-software.org/maven2/snapshots</url>
 		</repository>
 		<repository>
+			<releases>
+				<enabled>true</enabled>
+			</releases>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>aduna-mirror-ontotext</id>
+			<name>Aduna Maven Repository - Ontotext Mirror</name>
+			<url>http://maven.ontotext.com/content/repositories/aduna/</url>
+		</repository>
+		<repository>
 			<snapshots>
 				<enabled>true</enabled>
 			</snapshots>
@@ -981,17 +1004,6 @@
 			<url>http://mirrors.ibiblio.org/pub/mirrors/maven2/</url>
 		</repository>
 		-->
-                <repository>
-                        <releases>
-                                <enabled>true</enabled>
-                        </releases>
-                        <snapshots>
-                                <enabled>false</enabled>
-                        </snapshots>
-                        <id>aduna-mirror-ontotext</id>
-                        <name>Aduna Maven Repository - Ontotext Mirror</name>
-                        <url>http://maven.ontotext.com/content/repositories/aduna/</url>
-                </repository>
 	</repositories>
 
 	<distributionManagement>

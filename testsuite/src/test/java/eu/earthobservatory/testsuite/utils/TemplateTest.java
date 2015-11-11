@@ -92,6 +92,7 @@ public abstract class TemplateTest
 		
 		while(queryFileIterator.hasNext() && resultsFileIterator.hasNext())
 		{
+		
 			Utils.testQuery(queryFileIterator.next(), resultsFileIterator.next(),orderResults);
 		}
 	}

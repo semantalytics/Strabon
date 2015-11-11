@@ -234,6 +234,7 @@ public class JTSWrapper {
 		else {
 			return geometry;
 		}		
+		}		
 	}
 	
 	public synchronized String GMLWrite(Geometry geom) {

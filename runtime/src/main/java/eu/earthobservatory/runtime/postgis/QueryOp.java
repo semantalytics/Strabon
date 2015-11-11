@@ -67,8 +67,7 @@ public class QueryOp {
 			logger.error("[Strabon.QueryOp] Error during execution of SPARQL query: {}", e.getMessage());
 			
 		} catch (Exception e) {
-			logger.error("[Strabon.QueryOp] Error during execution of SPARQL query.", e);
-			
+			logger.error("[Strabon.QueryOp] Error during execution of SPARQL query.", e);			
 		} finally {
 			if (strabon != null) {
 				strabon.close();

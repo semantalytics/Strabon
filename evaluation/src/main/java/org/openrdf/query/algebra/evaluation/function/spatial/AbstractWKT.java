@@ -11,6 +11,7 @@ package org.openrdf.query.algebra.evaluation.function.spatial;
 
 import java.net.URI;
 
+import org.openrdf.query.algebra.evaluation.function.spatial.WKTHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -205,6 +206,6 @@ public class AbstractWKT {
 		}
 		
 		return srid;
-	}
+	}*/
 	*/
 }

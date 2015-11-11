@@ -72,6 +72,13 @@
 	<groupId>com.sun.xml.bind</groupId>
 	<artifactId>jaxb-impl</artifactId>
 </dependency>
+		<dependency>
+			<groupId>jtemporal</groupId>
+			<artifactId>jtemporal</artifactId>
+			<version>1.0</version>
+			<scope>system</scope>
+			<systemPath>${basedir}/lib/jtemporal.jar</systemPath>
+		</dependency>
 	</dependencies>
 	<modules>
 	</modules>

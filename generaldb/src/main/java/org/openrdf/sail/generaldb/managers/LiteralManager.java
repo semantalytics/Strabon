@@ -18,6 +18,8 @@ import org.openrdf.sail.generaldb.model.XMLGSDatatypeUtil;
 import org.openrdf.sail.generaldb.schema.LiteralTable;
 import org.openrdf.sail.rdbms.model.RdbmsLiteral;
 
+import eu.earthobservatory.constants.TemporalConstants;
+
 /**
  * Manages RDBMS Literals. Including creation, id lookup, and inserting them
  * into the database.
@@ -100,6 +102,9 @@ public class LiteralManager extends ValueManagerBase<RdbmsLiteral> {
 				else if (XMLGSDatatypeUtil.isCalendarDatatype(datatype)) {
 					long value = getCalendarValue(literal.calendarValue());
 					table.insertDateTime(id, label, dt, value);
+					//transform the date to period in order to insert it into the period_values table
+					String validPeriod = "[" + label + "," + label + "]";
+					table.insertTemporal(id, validPeriod);
 				}
 				else {
 					table.insertDatatype(id, label, dt);
@@ -110,6 +115,7 @@ public class LiteralManager extends ValueManagerBase<RdbmsLiteral> {
 					 * Will need some other place to add them if this approach does work
 					 * 
 					 */
+//					System.out.println("DATATYPE:"+datatype);
 					if(XMLGSDatatypeUtil.isWKTDatatype(datatype)) //WKT case
 					{
 						table.insertWKT(id, label, dt, null, null);
@@ -118,8 +124,12 @@ public class LiteralManager extends ValueManagerBase<RdbmsLiteral> {
 					{
 						table.insertGML(id, label, dt, null, null);
 					} 
+					else if(XMLGSDatatypeUtil.isPeriodDatatype(datatype)) // valid period  case- Constant
+					{ //TODO remember that the period should be validated, haven't decided the level yet though
+
+						table.insertTemporal(id, label);
+					}
 				}
-				
 			}
 			catch (NumberFormatException e) {
 				table.insertDatatype(id, label, dt);

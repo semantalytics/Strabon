@@ -1,0 +1,4 @@
+SELECT distinct ?x1 ?t1  
+WHERE { 
+	?x1 ?y1 ?z1 ?t1
+}

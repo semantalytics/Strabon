@@ -65,4 +65,18 @@ public class MonetDBBindingIteration extends GeneralDBBindingIteration {
 		int srid = rs.getInt(index + 2);
 		return vf.getRdbmsPolyhedron(GeoConstants.WKTLITERAL, label, srid);
 	}
+
+	@Override
+	protected RdbmsValue createTemporalValue(ResultSet rs, int index)
+			throws SQLException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	protected RdbmsValue createBinaryGeoValueForSelectConstructs(ResultSet rs,
+			int index) throws SQLException {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
