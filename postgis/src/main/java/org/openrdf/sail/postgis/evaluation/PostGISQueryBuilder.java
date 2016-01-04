@@ -1277,21 +1277,6 @@ else if(expr instanceof GeneralDBSqlSpatialMetricTriple)
 
 	
 
-	protected String appendConstantWKT(GeneralDBSqlExpr expr, GeneralDBSqlExprBuilder filter) throws UnsupportedRdbmsOperatorException
-	{
-		GeneralDBStringValue arg = (GeneralDBStringValue) expr;
-		String raw = arg.getValue();
-		
-		// parse raw WKT
-		AbstractWKT wkt = new AbstractWKT(raw);
-		// transform constant geometry to the default SRID
-		filter.append("ST_Transform(");
-		filter.append(" ST_GeomFromText('" + wkt.getWKT() + "'," + String.valueOf(wkt.getSRID()) + ")");
-		filter.append(", "+GeoConstants.defaultSRID +")");
-		
-		return raw;
-	}
-	
 	//Used in all the generaldb boolean spatial functions of the form ?GEO1 ~ ?GEO2 
 	//	protected void appendStSPARQLSpatialOperand(BinaryGeneralDBOperator expr, GeneralDBSqlExprBuilder filter, SpatialOperandsPostGIS operand) throws UnsupportedRdbmsOperatorException
 	//	{
@@ -2017,8 +2002,7 @@ else if(expr instanceof GeneralDBSqlSpatialMetricTriple)
 			}
 			/////
 
-			//case where both arguments are constnats
-			boolean constantArgs = false;	
+
 
 			switch(func)
 			{
@@ -2027,6 +2011,7 @@ else if(expr instanceof GeneralDBSqlSpatialMetricTriple)
 			case ST_Intersection: filter.appendFunction("ST_Intersection"); break;
 			case ST_Union: filter.appendFunction("ST_Union"); break;
 			case ST_SymDifference: filter.appendFunction("ST_SymDifference"); break;
+			case ST_Buffer: filter.appendFunction("ST_Buffer"); break;
 			
 			// PostGIS
 			case ST_MakeLine: filter.appendFunction("ST_MakeLine"); break;
@@ -2044,15 +2029,7 @@ else if(expr instanceof GeneralDBSqlSpatialMetricTriple)
 			filter.openBracket();
 			if(expr.getLeftArg() instanceof GeneralDBStringValue)
 			{
-				if(expr.getRightArg() instanceof GeneralDBStringValue)
-				{	
-					//both arguments are constants so we do not need
-					//to transform the geometries to WGS84
-					constantArgs = true;
-					appendWKT(expr.getLeftArg(), filter);
-				}
-				else
-					appendConstantWKT(expr.getLeftArg(), filter);
+				appendWKT(expr.getLeftArg(),filter);
 			}
 			else if(expr.getLeftArg() instanceof GeneralDBSqlSpatialConstructBinary)
 			{
@@ -2079,12 +2056,7 @@ else if(expr instanceof GeneralDBSqlSpatialMetricTriple)
 
 			if(expr.getRightArg() instanceof GeneralDBStringValue)
 			{
-				if(constantArgs == true)
-					// both arguments are constants, so we do not need
-					// to transform the geometries to WGS84
-					appendWKT(expr.getRightArg(), filter);
-				else
-					appendConstantWKT(expr.getRightArg(),filter);
+				appendWKT(expr.getRightArg(),filter);
 			}
 			else if(expr.getRightArg() instanceof GeneralDBSqlSpatialConstructUnary)
 			{
@@ -2343,7 +2315,7 @@ else if(expr instanceof GeneralDBSqlSpatialMetricTriple)
 		filter.closeBracket();
 	}
 
-	//Buffer function (Giannis: dont get deceived by "filter". It also applies for the case the buffer occurs in the select clause too)
+	//Buffer function
 	protected void appendBuffer(TripleGeneralDBOperator expr, GeneralDBSqlExprBuilder filter, SpatialFunctionsPostGIS func) throws UnsupportedRdbmsOperatorException
 	{
 		boolean sridNeeded = true;
@@ -2412,7 +2384,7 @@ else if(expr instanceof GeneralDBSqlSpatialMetricTriple)
 					}
 					else if (tmp instanceof GeneralDBStringValue) //Constant!!
 					{
-						sridNeeded  = true;
+						sridNeeded  = false;
 						sridExpr = String.valueOf(WKTHelper.getSRID(((GeneralDBStringValue) tmp).getValue()));
 						break;
 					}

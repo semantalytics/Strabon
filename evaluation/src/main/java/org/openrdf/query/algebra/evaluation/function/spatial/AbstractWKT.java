@@ -194,12 +194,12 @@ public class AbstractWKT {
 	 * @param wkt
 	 * @return
 	 
-	protected Integer getEPSG_SRID(String wkt) {
+	protected int getEPSG_SRID(String wkt) {
 		int srid = GeoConstants.defaultSRID;
 		
 		try {
 			srid = Integer.parseInt(wkt.substring(wkt.lastIndexOf('/') + 1).replace(">", ""));
-
+			
 		} catch (NumberFormatException e) {
 			logger.warn("[Strabon.AbstractWKT] Was expecting an integer. The URL of the EPSG SRID was {}. Continuing with the default SRID, {}", wkt, srid);
 			
@@ -207,5 +207,4 @@ public class AbstractWKT {
 		
 		return srid;
 	}*/
-	*/
 }

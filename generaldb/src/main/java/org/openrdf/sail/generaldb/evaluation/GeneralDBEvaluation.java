@@ -14,11 +14,9 @@ import info.aduna.iteration.CloseableIteration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.openrdf.model.Literal;
 import org.openrdf.model.Value;
@@ -32,7 +30,6 @@ import org.openrdf.query.Dataset;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.algebra.Avg;
 import org.openrdf.query.algebra.Distinct;
-import org.openrdf.query.algebra.Filter;
 import org.openrdf.query.algebra.FunctionCall;
 import org.openrdf.query.algebra.Group;
 import org.openrdf.query.algebra.GroupElem;
@@ -90,9 +87,7 @@ import org.openrdf.query.algebra.evaluation.function.spatial.stsparql.relation.m
 import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.construct.TemporalConstructFunc;
 import org.openrdf.query.algebra.evaluation.function.temporal.stsparql.relation.TemporalRelationFunc;
 import org.openrdf.query.algebra.evaluation.impl.EvaluationStrategyImpl;
-import org.openrdf.query.algebra.evaluation.iterator.FilterIterator;
 import org.openrdf.query.algebra.evaluation.iterator.OrderIterator;
-import org.openrdf.query.algebra.evaluation.iterator.StSPARQLFilterIterator;
 import org.openrdf.query.algebra.evaluation.iterator.StSPARQLGroupIterator;
 import org.openrdf.query.algebra.evaluation.util.JTSWrapper;
 import org.openrdf.query.algebra.evaluation.util.StSPARQLOrderComparator;
@@ -354,9 +349,6 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 				
 				if(function instanceof AreaFunc)
 				{
-					// check required number of arguments
-					checkArgs(leftResult, rightResult, thirdResult, 1);
-					
 					funcResult = leftGeom.getArea();
 				} 
 				else if(function instanceof DistanceFunc)
@@ -541,23 +533,6 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 		}
 	}
 
-	/*Evaluation of Filter*/
-	public CloseableIteration<BindingSet, QueryEvaluationException> evaluate(Filter filter, BindingSet bindings)
-			throws QueryEvaluationException
-	{
-			CloseableIteration<BindingSet, QueryEvaluationException> result;
-			result = this.evaluate(filter.getArg(), bindings);
-
-			Set <String> spatialConstructs = new HashSet<String>();
-			for(GeneralDBSpatialFuncInfo construct : constructIndexesAndNames.keySet()) {
-				spatialConstructs.add(construct.getFieldName());
-			}
-			//add the spatial constructs to the scope of the FILTER (case of a BIND clause
-			//that contains a spatial construct)	
-			result = new StSPARQLFilterIterator(filter, result, spatialConstructs, this);
-			return result;
-	}
-
 	/**
 	 * @param leftResult
 	 * @param rightResult
@@ -582,15 +557,8 @@ public abstract class GeneralDBEvaluation extends EvaluationStrategyImpl {
 				throw new NoSuchMethodException("expecting a third argument.");
 				
 			}
-
+			
 			if (size > 3) {
-				throw new NoSuchMethodException("too many arguments.");
-			}
-
-			if (size == 1 && (rightResult !=null || thirdResult != null) ) {
-				throw new NoSuchMethodException("too many arguments.");
-			}
-			if (size == 2 && thirdResult != null) {
 				throw new NoSuchMethodException("too many arguments.");
 			}
 		}

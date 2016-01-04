@@ -176,7 +176,6 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 		try {
 			// keep the order of binding names
 			this.bindingNames = bindingNames;
-			
 			xmlWriter.startDocument();
 			xmlWriter.setAttribute("xmlns", NAMESPACE);
 			xmlWriter.startTag(ROOT_TAG);
@@ -255,6 +254,7 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 			// write placemark tag
 			xmlWriter.startTag(PLACEMARK_TAG);
 			for (Binding binding : bindingSet) {
+				
 				if(!binding.getValue().toString().contains("^^") || (binding.getValue() instanceof org.openrdf.sail.generaldb.model.GeneralDBPolyhedron)){
 					continue;
 				}
@@ -298,9 +298,9 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 			xmlWriter.textElement(NAME_TAG, "Result" + nresults);
 			
 			// parse binding set
-			for (String bindingName : bindingNames) {				
-				Binding binding = bindingSet.getBinding(bindingName);
+			for (String bindingName : bindingNames) {
 				
+				Binding binding = bindingSet.getBinding(bindingName);
 				if(binding != null) {
 					Value value = binding.getValue();
 					
@@ -315,6 +315,7 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 						xmlWriter.unescapedText(getKML(value));
 						
 					} else { // URI, BlankNode, or Literal other than spatial literal
+						
 						if (logger.isDebugEnabled()) {
 							logger.debug("[Strabon.KMLWriter] Found URI/BlankNode/Literal ({}): {}", value.getClass(), value);
 						}

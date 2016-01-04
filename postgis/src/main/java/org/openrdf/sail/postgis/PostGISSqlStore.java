@@ -104,11 +104,8 @@ public class PostGISSqlStore extends PostGISStore {
 		url.append(databaseName);
 		Iterator<Entry<String, String>> iter;
 		iter = getProperties().entrySet().iterator();
-		
-		// append application name for identifying connection in `pg_stat_activity' table
-		url.append("?application_name=strabon");
 		if (iter.hasNext()) {
-			url.append("&");
+			url.append("?");
 		}
 		while (iter.hasNext()) {
 			Entry<String, String> e = iter.next();
