@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 
 import org.geotools.data.simple.SimpleFeatureCollection;
@@ -21,12 +20,12 @@ import org.geotools.feature.FeatureCollections;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.geojson.feature.FeatureJSON;
-import org.geotools.geojson.geom.GeometryJSON;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.openrdf.model.Literal;
-import org.openrdf.model.URI;
 import org.openrdf.model.Value;
+import org.openrdf.model.impl.LiteralImpl;
+import org.openrdf.model.impl.URIImpl;
 import org.openrdf.query.Binding;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.TupleQueryResultHandlerException;
@@ -102,7 +101,7 @@ public class stSPARQLResultsGeoJSONWriter implements TupleQueryResultWriter {
 
 	@Override
 	public void startQueryResult(List<String> bindingNames) throws TupleQueryResultHandlerException {
-		fjson = new FeatureJSON(new GeometryJSON(jts.getPrecision()));
+		fjson = new FeatureJSON();
 		fjson.setEncodeFeatureCRS(true);
 	}
 
@@ -224,29 +223,7 @@ public class stSPARQLResultsGeoJSONWriter implements TupleQueryResultWriter {
 				
 				// add the properties
 				for (int p = 0; p < properties.size(); p++) {
-					Value val = values.get(p);
-					
-					if (val instanceof Literal) {
-						Literal lit = (Literal) val;
-						URI datatype = lit.getDatatype();
-						
-						if (XMLGSDatatypeUtil.isNumericDatatype(datatype)) {
-							sftb.add(properties.get(p), Number.class);
-							
-						} else if (XMLGSDatatypeUtil.isCalendarDatatype(datatype)) {
-							sftb.add(properties.get(p), Calendar.class);
-							
-						} else if (XMLGSDatatypeUtil.isBooleanDatatype(datatype)) {
-							sftb.add(properties.get(p), Boolean.class);
-							
-						} else { // fallback to String
-							sftb.add(properties.get(p), String.class);	
-						}
-						
-					} else { // fallback to String
-						sftb.add(properties.get(p), String.class);
-					}
-					
+					sftb.add(properties.get(p), String.class);
 				}
 				
 				SimpleFeatureType featureType = sftb.buildFeatureType();
@@ -257,7 +234,7 @@ public class stSPARQLResultsGeoJSONWriter implements TupleQueryResultWriter {
 				
 				// add the values to the builder of the feature
 				for (int v = 0; v < values.size(); v++) {
-					featureBuilder.add(values.get(v).stringValue());
+					featureBuilder.add(values.get(v));
 				}
 				
 				SimpleFeature feature = featureBuilder.buildFeature(null);

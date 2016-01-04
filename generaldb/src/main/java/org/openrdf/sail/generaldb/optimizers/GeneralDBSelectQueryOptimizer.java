@@ -152,9 +152,6 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 
 	private Group referenceGroupBy = null;
 
-	//used to keep the names used in a BIND clause
-	private Set<String> namesInBind = new HashSet<String>();
-
 	//Counter used to enumerate expressions in having
 	private int havingID = 1;
 
@@ -1230,10 +1227,8 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 			
 			if (expr instanceof FunctionCall)
 			//if (expr instanceof FunctionCall && !isFuncExprGrounded(expr))
-			{ // if the expr is grounded we are going to evaluate it in Java
-				//also if the function involves variables from a BIND clause
-				//we evaluate it in java
-				if(!evaluateInJava(expr) && !varInBind(expr))
+			{ // if the expr is grounded we are going to evaluate it in Java 
+				if(!evaluateInJava(expr))
 				{
 					Function function = FunctionRegistry.getInstance().get(((FunctionCall) expr).getURI());
 					if(function instanceof SpatialPropertyFunc  || function instanceof SpatialRelationshipFunc ||
@@ -1258,7 +1253,7 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 						}
 					}
 				}
-				else if(!varInBind(expr)) //Union (or Extent) is used as an aggregate function on Select Clause!
+				else //Union (or Extent) is used as an aggregate function on Select Clause!
 				{
 					//must add as aggregate
 					if(this.referenceGroupBy != null)
@@ -1268,10 +1263,7 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 					}
 					iter.remove();
 				}
-				//if the name of the new variable is not present in the projection
-				//then it results from a BIND
-				if(!(node.getParentNode() instanceof Projection))
-					namesInBind.add(name+"?spatial");
+
 			}
 			//Issue: MathExpr is not exclusively met in spatial cases!
 			//Need to distinguish thematic and spatial!!
@@ -1510,32 +1502,6 @@ public class GeneralDBSelectQueryOptimizer extends GeneralDBQueryModelVisitorBas
 			return false;
 		}
 
-	}
-
-	/**
-	 *
-	 * @param expr
-	 * @return true if the variable occurs inside a BIND clause
-	 * false otherwise
-	 */
-	private boolean varInBind(ValueExpr expr)
-	{
-		if(expr instanceof FunctionCall)
-		{
-			for(int i = 0 ; i< ((FunctionCall) expr).getArgs().size(); i++)
-			{
-				return varInBind(((FunctionCall) expr).getArgs().get(i));
-			}
-			return false;
-		}
-		else if(expr instanceof Var) //Var
-		{
-			if(namesInBind.contains(((Var)expr).getName()))
-				return true;
-			return false;
-		}
-		else
-			return false;
 	}
 
 	@Override

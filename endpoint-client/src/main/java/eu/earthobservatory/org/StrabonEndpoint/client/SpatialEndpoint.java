@@ -59,7 +59,7 @@ public class SpatialEndpoint extends SPARQLEndpoint {
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 		stSPARQLResultsKMLWriter kmlWriter = new stSPARQLResultsKMLWriter(outputStream);
 			
-		kmlWriter.startQueryResult(results.getBindingNames());
+		kmlWriter.startQueryResult(new Vector<String>());
 					
 		while(results.hasNext()){
 		

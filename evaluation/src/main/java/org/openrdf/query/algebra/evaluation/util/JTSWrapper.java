@@ -23,13 +23,11 @@ import org.opengis.referencing.NoSuchAuthorityCodeException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
-import org.openrdf.query.algebra.evaluation.function.spatial.AbstractWKT;
 import org.openrdf.query.algebra.evaluation.function.spatial.WKTHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.PrecisionModel;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKBReader;
 import com.vividsolutions.jts.io.WKBWriter;
@@ -37,8 +35,6 @@ import com.vividsolutions.jts.io.WKTReader;
 import com.vividsolutions.jts.io.WKTWriter;
 import com.vividsolutions.jts.io.gml2.GMLReader;
 import com.vividsolutions.jts.io.gml2.GMLWriter;
-
-import eu.earthobservatory.constants.GeoConstants;
 
 /**
  * This class is a singleton and provides access to the readers/writers
@@ -80,12 +76,6 @@ public class JTSWrapper {
 	 */
 	private GMLWriter gmlw;
 	
-	/**
-	 * Stores the number of decimal places for the
-	 * default precision model of JTS. 
-	 */
-	private int numDecimalPlaces;
-
 	private JTSWrapper() {
 		// use a private constructor to force call of getInstance method and forbid subclassing
 		wktr = new WKTReader();
@@ -94,8 +84,6 @@ public class JTSWrapper {
 		wkbw = new WKBWriter(); // PostGIS
 //		wkbw = new WKBWriter(2, WKBConstants.wkbXDR); // MonetDB
 		gmlw = new GMLWriter();
-
-		numDecimalPlaces = (new PrecisionModel()).getMaximumSignificantDigits();
 	}
 	
 	public static synchronized JTSWrapper getInstance() {
@@ -234,20 +222,9 @@ public class JTSWrapper {
 		else {
 			return geometry;
 		}		
-		}		
 	}
 	
 	public synchronized String GMLWrite(Geometry geom) {
 		return gmlw.write(geom);
-	}
-
-	/**
-	 * Returns the number of decimal places corresponding to the
-	 * precision model that is used by default by the JTS library.
-	 * 
-	 * @return
-	 */
-	public int getPrecision() {
-		return numDecimalPlaces;
 	}
 }

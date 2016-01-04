@@ -55,7 +55,7 @@ public class Strabon extends eu.earthobservatory.runtime.generaldb.Strabon {
 			logger.info("[Strabon] Cleaning...");
 			Class.forName("org.postgresql.Driver");
 			url = "jdbc:postgresql://" + serverName + ":" + port + "/"
-			+ databaseName + "?user=" + user + "&password=" + password + "&application_name=strabon";
+			+ databaseName + "?user=" + user + "&password=" + password;
 			Connection conn = DriverManager.getConnection(url);
 			java.sql.Statement st = conn.createStatement();
 			st.execute("DROP TABLE IF EXISTS locked;");
@@ -95,7 +95,7 @@ public class Strabon extends eu.earthobservatory.runtime.generaldb.Strabon {
 		try {
 			logger.info("[Strabon] Checking for locks...");
 			Class.forName("org.postgresql.Driver");
-			url = "jdbc:postgresql://" + serverName + ":" + port + "/" + databaseName + "?user=" + user + "&password=" + password + "&application_name=strabon";
+			url = "jdbc:postgresql://" + serverName + ":" + port + "/" + databaseName + "?user=" + user + "&password=" + password;
 			
 			conn = DriverManager.getConnection(url);
 			st = conn.createStatement();
