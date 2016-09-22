@@ -5,18 +5,23 @@
  */
 package org.openrdf.sail.generaldb.schema;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 
 import javax.xml.bind.JAXBException;
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.openrdf.query.algebra.evaluation.function.spatial.AbstractWKT;
 import org.openrdf.query.algebra.evaluation.function.spatial.StrabonPolyhedron;
+
 import eu.earthobservatory.constants.TemporalConstants;
+
 import org.openrdf.query.algebra.evaluation.util.JTSWrapper;
 import org.openrdf.sail.generaldb.managers.LiteralManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
 
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.ParseException;
@@ -237,6 +242,15 @@ public class LiteralTable {
 			geoSpatialTable.insert(id, geom.getSRID(),/* start,end,*/ JTSWrapper.getInstance().WKBwrite(geom));
 			
 		} catch (JAXBException e) {
+			logger.error("[Strabon.insertGML] Error during insertion of GML literal.", e);
+		}
+		catch (ParserConfigurationException e) {
+			logger.error("[Strabon.insertGML] Error during insertion of GML literal.", e);
+		}
+		catch (IOException e) {
+			logger.error("[Strabon.insertGML] Error during insertion of GML literal.", e);
+		}
+		catch (SAXException e) {
 			logger.error("[Strabon.insertGML] Error during insertion of GML literal.", e);
 		}
 		
