@@ -9,11 +9,16 @@
  */
 package org.openrdf.query.algebra.evaluation.util;
 
+import java.io.IOException;
 import java.io.StringReader;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.geotools.geometry.jts.JTS;
 import org.geotools.referencing.CRS;
@@ -26,8 +31,11 @@ import org.opengis.referencing.operation.TransformException;
 import org.openrdf.query.algebra.evaluation.function.spatial.WKTHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
 
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.PrecisionModel;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKBReader;
 import com.vividsolutions.jts.io.WKBWriter;
@@ -188,8 +196,12 @@ public class JTSWrapper {
 	 * @param gml
 	 * @return
 	 * @throws JAXBException
+	 * @throws ParserConfigurationException 
+	 * @throws IOException 
+	 * @throws SAXException 
 	 */
-	public Geometry GMLread(String gml) throws JAXBException {
+	public Geometry GMLread(String gml) throws JAXBException, SAXException, IOException, ParserConfigurationException {
+		/*
 		StringReader reader = new StringReader(gml);
 
         JAXBContext context = JAXBContext.newInstance("org.jvnet.ogc.gml.v_3_1_1.jts");	
@@ -197,7 +209,7 @@ public class JTSWrapper {
         Geometry geometry = (Geometry) unmarshaller.unmarshal(reader);
 		
 		reader.close();
-		
+		*/
 		/**
 		 * When unmarshalling GML, GML-JTS tries to parse srsName as EPSG code using the following patterns:
 		 * 	EPSG:{0,number,integer}
@@ -215,6 +227,31 @@ public class JTSWrapper {
 		 * we check the userData variable of the geometry after the unmarshal call. If it is not null,
 		 * then we have the string that represents the srid and we need to extract it and set it in the geometry inastance.
 		 */
+		
+		int SRID = 4326;
+		try {
+			Pattern pattern = Pattern.compile("srsName=\"(.*)\"");
+			Matcher matcher = pattern.matcher(gml);
+			if (matcher.find()) {
+				SRID = Integer.parseInt(matcher.group(1).substring(matcher.group(1).indexOf(":")+1, matcher.group(1).length()));
+			}
+		} catch (PatternSyntaxException e) {
+			logger.error("[GML read] No SRID found for the Geometry: {}", e.getMessage());
+			
+		} catch (NumberFormatException e) {
+			logger.error("[GML read] No SRID found for the Geometry: {}", e.getMessage());
+			
+		} catch (IllegalStateException e) {
+			logger.error("[GML read] No SRID found for the Geometry: {}", e.getMessage());
+			
+		} catch (IndexOutOfBoundsException e) {
+			logger.error("[GML read] No SRID found for the Geometry: {}", e.getMessage());
+		}
+		
+		GMLReader gmlReader = new GMLReader();
+		GeometryFactory geomFactory = new GeometryFactory(new PrecisionModel(), SRID);
+		Geometry geometry = (Geometry) gmlReader.read(gml, geomFactory);		
+		
 		if (geometry.getUserData() != null) {
 			geometry.setSRID(WKTHelper.getSRID((String)geometry.getUserData()));
 	        return geometry;

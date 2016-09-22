@@ -16,6 +16,7 @@ import java.util.List;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.namespace.QName;
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.geotools.kml.KML;
 import org.geotools.kml.KMLConfiguration;
@@ -37,6 +38,7 @@ import org.openrdf.sail.generaldb.model.GeneralDBPolyhedron;
 import org.openrdf.sail.generaldb.model.XMLGSDatatypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
 
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
@@ -477,12 +479,19 @@ public class stSPARQLResultsKMLWriter implements TupleQueryResultWriter {
 		} catch (ParseException e) {
 			logger.error("[Strabon.KMLWriter] Parse error exception of geometry: {}", e.getMessage());
 			
+		} catch (ParserConfigurationException e) {
+			logger.error("[Strabon.KMLWriter] Parse configuration exception of geometry factory: {}", e.getMessage());
+
+		} catch (SAXException e) {
+			logger.error("[Strabon.KMLWriter] SAX exception: {}", e.getMessage());
+			
 		} catch (IOException e) {
-			logger.error("[Strabon.KMLWriter] IOException during KML encoding of geometry: {}",	e.getMessage());
+			logger.error("[Strabon.KMLWriter] IOException during KML encoding of geometry: {}", e.getMessage());
 			
 		} catch (JAXBException e) {
 			logger.error("[Strabon.KMLWriter] Exception during GML parsing: {}", e.getMessage());
 		}
+
 		
 		return kml;
 	}
