@@ -1,3 +1,14 @@
+	* Fixed bug in the query rewritter that occurs when there is a
+	  quad pattern and the third element is a constant that contains
+	  spaces. Other bugs where also discovered and fixed in the way 
+	  (i.e., prefixes, non complete rules in regex). 
+	  (bug #83: http://bug.strabon.di.uoa.gr/ticket/83)
+	   
+	  Query rewritter will be deprecated in future releases, 
+	  as any other use of regex as well. The new version will be
+	  developed in lower level.
+	  (Enhancement #84: https://bug.strabon.di.uoa.gr/ticket/84)
+	
 	* Completed implementation of the period function, that constructs
 	  a period with start and end points the given arguments
 	* Fixed a bug that would not return the correct spatial datatype of a
