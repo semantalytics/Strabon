@@ -14,10 +14,12 @@
 
 package eu.earthobservatory.runtime.generaldb;
 
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.eclipse.emf.ecore.EValidator.PatternMatcher;
 import org.openrdf.model.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +31,7 @@ public class utils {
 	private static Logger logger = LoggerFactory.getLogger(eu.earthobservatory.runtime.generaldb.Strabon.class);
 	
 	public static String queryRewriting(String queryString) 
-	{
+	{	
 		String newQueryString="";
 		int numOfQuadruples=0;
 		int startIndex=0;
@@ -38,6 +40,20 @@ public class utils {
 		
 		StringBuffer whereClauses = new StringBuffer(2048);
 		NQuadsParser parser = new NQuadsParser();
+		
+		String Prefix = "(Prefix[\\s]*)(.*)(:[\\s]*)(<>)";
+		String prefix = "([\\s]*(Prefix)\\s*(.*):\\s(<http://strdf.di.uoa.gr/[^>]*)>)";
+		
+		Pattern prefixpattern = Pattern.compile(prefix, Pattern.CASE_INSENSITIVE);
+		
+		Matcher prefixmatcher = prefixpattern.matcher(queryString);
+		String strdfprefix = null, strdf = null;
+		
+		while(prefixmatcher.find()){
+			strdfprefix = prefixmatcher.group(3);
+			strdf = prefixmatcher.group(4);
+
+        }
 		
 		try
 		{
@@ -60,7 +76,8 @@ public class utils {
 			//check whether the query contains quadruples	
 			String Word="((\\w)|(\\p{InGreek})|-)+";
 			String URI="(<([\\S-])*>)|("+Word+":"+Word+")";
-			String Literal="\".*\"(\\^\\^"+URI+")?";
+			String Literal="\"[^\"]*\"(\\^{2}("+URI+"))?";
+			String Malakia = "\"[^\"]*\"(\\^{2}(" + URI + "))?";
 			String Variable="\\?"+Word;
 			
 			String SPOT="(("+URI+")|("+Literal+")|("+Variable+"))";
@@ -69,6 +86,8 @@ public class utils {
 
 			pattern = Pattern.compile(REGEX, Pattern.DOTALL);							
 			matcher = pattern.matcher(oldQueryString);
+			
+
 			
 			Pattern updatePattern = Pattern.compile(updateREGEX, Pattern.DOTALL);
 			Matcher updateMatcher =  updatePattern.matcher(oldQueryString);
@@ -108,13 +127,35 @@ public class utils {
 				 * insert data {graph <g> {s p o} }
 				 * 
 				 */
-				String[] token = quadruple.split("(\\s)+");
-	
+				//String[] token = quadruple.split("(\\s)+");
+				String regy = "(\"){1}[^\"]*(\"){1}";
+			    Pattern pat = Pattern.compile(SPOT); 
+		        Matcher mat = pat.matcher(quadruple);
+		        
+		        String[] token = new String[4];
+		        
+		        int i=0;
+		        
+		        while(mat.find()){
+		        	token[i] = mat.group(0);
+		        	i++;
+		        }
+		      
+		        
 				
-				int i=3;
+				i=3;
 				if(!isVar(token[3]) && inWhere==false) //the forth element is a literal representation of valid time
 				{
-					String tgraph =  "<"+parser.createValidTimeURI(token[3]).toString()+">";
+					String temporaltoken = null, tgraph = null;
+					
+					if(strdfprefix != null){
+						temporaltoken= token[3].replace(strdfprefix + ":", strdf) + ">";
+						tgraph = parser.createValidTimeURI(temporaltoken+">")+">";
+					}
+					else{
+						temporaltoken = token[3].toString();
+					}
+					tgraph =  "<"+parser.createValidTimeURI(temporaltoken)+">";
 					newQueryString+="\n GRAPH "+tgraph+" { " +token[0]+" "+token[1]+" "+token[2]+" .}\n";
 					newQueryString+= tgraph+" "+ TemporalConstants.VALID_TIME_PROPERTY;
 					i=3;
@@ -123,7 +164,6 @@ public class utils {
 				else
 				{
 					String tgraph=null;
-					//String addedPattern = graphVariable+numOfQuadruples+ " TemporalConstants.VALID_TIME_PROPERTY"+ token[3];
 					if(periodsAndGraphs.containsKey(token[3]))
 					{
 						tgraph = periodsAndGraphs.get(token[3]);
