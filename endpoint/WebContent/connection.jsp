@@ -96,6 +96,10 @@
 			</SELECT>
 		</TD>
 	</TR>
+	<TR> 
+		<TD valign="top" class="style4">Google Maps API Key:</TD>
+		<TD><input type="text" name="googlemapskey" value="<%=request.getAttribute("googlemapskey")%>"/></TD>
+	</TR>
 	<TR>
 		<TD colspan=2><input type="submit" value="Connect"/></TD>
 	</TR>

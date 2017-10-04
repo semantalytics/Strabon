@@ -43,7 +43,7 @@ public class ChangeConnectionBean extends HttpServlet {
 	
 	public void init(ServletConfig servletConfig) throws ServletException {
 		super.init(servletConfig);
-
+                
 		// get the context of the servlet
 		context = getServletContext();
 		
@@ -69,6 +69,7 @@ public class ChangeConnectionBean extends HttpServlet {
 		request.setAttribute("hostname", strabonWrapper.getHostName());
 		request.setAttribute("port", 	 strabonWrapper.getPort());
 		request.setAttribute("dbengine", strabonWrapper.getDBEngine());
+                request.setAttribute("googlemapskey", strabonWrapper.getGooglemapskey());
 		
 		// pass the other parameters as well
 		request.setAttribute("query", request.getParameter("query"));	
