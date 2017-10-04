@@ -126,7 +126,8 @@ public class ConnectionBean extends HttpServlet {
 	 											request.getParameter("password"), 
 	 											request.getParameter("port"),
 	 											request.getParameter("hostname"), 
-	 											request.getParameter("dbengine"));
+	 											request.getParameter("dbengine"),
+                                                                                                request.getParameter("googlemapskey"));
 	 		
 	 		// pass the query, format, and the handle that had been issued to the dispatcher
 	 		request.setAttribute("query",  	request.getAttribute("query"));
@@ -150,7 +151,8 @@ public class ConnectionBean extends HttpServlet {
 	 									 request.getParameter("password"), 
 	 									 request.getParameter("port"), 
 	 									 request.getParameter("hostname"), 
-	 									 request.getParameter("dbengine"));
+	 									 request.getParameter("dbengine"),
+                                                                                 request.getParameter("googlemapskey"));
 	 			
 	 			if (logger.isInfoEnabled()) {
 	 				logger.info("[StrabonEndpoint.ConnectionBean] New connection details succesfully saved.");
@@ -171,6 +173,7 @@ public class ConnectionBean extends HttpServlet {
 	 			request.setAttribute("port", 	 request.getParameter("port"));
 	 			request.setAttribute("hostname", request.getParameter("hostname"));
 	 			request.setAttribute("dbengine", request.getParameter("dbengine"));
+                                request.setAttribute("googlemapskey", request.getParameter("googlemapskey"));
 	 			
 	 			dispatcher = request.getRequestDispatcher("/connection.jsp");
 	 			
@@ -182,7 +185,7 @@ public class ConnectionBean extends HttpServlet {
 	}
 
 	private void saveNewConnectionDetails(String dbname, String username, String password, 
-				 		String port, String hostname, String dbengine) throws IOException {
+				 		String port, String hostname, String dbengine, String googlemapskey) throws IOException {
 		Properties properties = new Properties();
 		
 		synchronized (lock) {
@@ -199,6 +202,7 @@ public class ConnectionBean extends HttpServlet {
 			properties.setProperty("port", 		port);
 			properties.setProperty("hostname", 	hostname);
 			properties.setProperty("dbengine", 	dbengine);
+                        properties.setProperty("googlemapskey", googlemapskey);
 			
 			// store them
 			properties.store(new FileOutputStream(context.getRealPath(CONNECTION_PROPERTIES_FILE)), null);

@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans  xmlns="http://www.springframework.org/schema/beans"
-		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans 
     						http://www.springframework.org/schema/beans/spring-beans-2.5.xsd"
-		xmlns:jaxws="http://cxf.apache.org/jaxws"
-		jaxws:schemaLocation="http://cxf.apache.org/jaxws http://cxf.apache.org/schemas/jaxws.xsd">
+        xmlns:jaxws="http://cxf.apache.org/jaxws"
+        jaxws:schemaLocation="http://cxf.apache.org/jaxws http://cxf.apache.org/schemas/jaxws.xsd">
 
-	<bean id="serverProperties" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
-		<property name="locations">
-			<list>
-				<value>WEB-INF/connection.properties</value>
-			</list>
-		</property>
-	</bean>
+    <bean id="serverProperties" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>WEB-INF/connection.properties</value>
+            </list>
+        </property>
+    </bean>
   
-	<bean id="capsBean" class="eu.earthobservatory.org.StrabonEndpoint.capabilities.CapabilitiesDelegateBean" destroy-method="destroy">
-		<!-- specify which implementation of the Capabilities interface shall be used -->
-		<!-- true : AutoDiscoveryCapabilities -->
-		<!-- false: EndpointCapabilities -->
-		<constructor-arg type="boolean">
+    <bean id="capsBean" class="eu.earthobservatory.org.StrabonEndpoint.capabilities.CapabilitiesDelegateBean" destroy-method="destroy">
+        <!-- specify which implementation of the Capabilities interface shall be used -->
+        <!-- true : AutoDiscoveryCapabilities -->
+        <!-- false: EndpointCapabilities -->
+        <constructor-arg type="boolean">
             <value>false</value>
         </constructor-arg>
-	</bean>
+    </bean>
 	
     <bean
         id="strabonBean"
@@ -40,7 +40,7 @@
 
         <constructor-arg type="java.lang.String" >
             <!-- Password -->
-	    <value>${password}</value>
+            <value>${password}</value>
         </constructor-arg>
 
         <constructor-arg type="int" >
@@ -63,6 +63,11 @@
             <value>${dbengine}</value>
         </constructor-arg>
         
+        <constructor-arg type="java.lang.String" >
+            <!-- Google Maps Key -->
+            <value>${googlemapskey}</value>
+        </constructor-arg>
+                
         <constructor-arg type="int" >
             <!-- Query limit -->
             <value>0</value>
@@ -72,8 +77,8 @@
             <!-- Load from File -->
             <value>true</value>
         </constructor-arg>
-     
-     	<!-- Boolean variable linkURL in stSPARQLResultsHTMLWriter.java (line 115) to change the links between web and describe -->
+        
+        <!-- Boolean variable linkURL in stSPARQLResultsHTMLWriter.java (line 115) to change the links between web and describe -->
         
         <constructor-arg type="java.lang.String" >
             <!-- Default prefixes -->
@@ -93,181 +98,181 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 PREFIX uom: <http://www.opengis.net/def/uom/OGC/1.0/>
 ]]>
-</value>
+            </value>
         </constructor-arg>
         
         <constructor-arg>
-             <list>
-             	<list>
-             		<!-- Single valued elements correspond to headers -->
-					<value>Discovery Queries</value>
-	            </list>
-				<list>
-	                 <!-- Bean -->
-	                <value>Query</value> 
-	                <!-- Format -->
-	                <value>HTML</value>   
-	                <!-- Label -->
-	                <value>Find all triples in the dataset.</value> 
-	                <!-- Statement -->
-	                <value><![CDATA[
+            <list>
+                <list>
+                    <!-- Single valued elements correspond to headers -->
+                    <value>Discovery Queries</value>
+                </list>
+                <list>
+                    <!-- Bean -->
+                    <value>Query</value> 
+                    <!-- Format -->
+                    <value>HTML</value>   
+                    <!-- Label -->
+                    <value>Find all triples in the dataset.</value> 
+                    <!-- Statement -->
+                    <value><![CDATA[
 SELECT *
 WHERE { 
 	?s ?p ?o	
 }
 ]]></value>
-	                <!-- Description -->
-					<value></value>
-					<!-- Hander (plain, download, map or map_local)-->
-					<value>Plain</value>
-	            </list>
-	            <list>
-	                 <!-- Bean -->
-	                <value>Query</value> 
-	                <!-- Format -->
-	                <value>HTML</value>   
-	                <!-- Label -->
-	                <value>Select all distinct subjects that appear in the dataset.</value> 
-	                <!-- Statement -->
-	                <value><![CDATA[
+                    <!-- Description -->
+                    <value></value>
+                    <!-- Hander (plain, download, map or map_local)-->
+                    <value>Plain</value>
+                </list>
+                <list>
+                    <!-- Bean -->
+                    <value>Query</value> 
+                    <!-- Format -->
+                    <value>HTML</value>   
+                    <!-- Label -->
+                    <value>Select all distinct subjects that appear in the dataset.</value> 
+                    <!-- Statement -->
+                    <value><![CDATA[
 SELECT DISTINCT (?s AS ?subject)
 WHERE { 
 	?s ?p ?o
 }
 ]]></value>
-	                <!-- Description -->
-					<value></value>
-					<!-- Hander (plain, download, map or map_local)-->
-					<value>Plain</value>
-	            </list>
-	            <list>
-	                 <!-- Bean -->
-	                <value>Query</value> 
-	                <!-- Format -->
-	                <value>HTML</value>   
-	                <!-- Label -->
-	                <value>Select all distinct predicates that appear in the dataset.</value> 
-	                <!-- Statement -->
-	                <value><![CDATA[
+                    <!-- Description -->
+                    <value></value>
+                    <!-- Hander (plain, download, map or map_local)-->
+                    <value>Plain</value>
+                </list>
+                <list>
+                    <!-- Bean -->
+                    <value>Query</value> 
+                    <!-- Format -->
+                    <value>HTML</value>   
+                    <!-- Label -->
+                    <value>Select all distinct predicates that appear in the dataset.</value> 
+                    <!-- Statement -->
+                    <value><![CDATA[
 SELECT DISTINCT (?p AS ?predicate)
 WHERE { 
 	?s ?p ?o
 }
 ]]></value>
-	                <!-- Description -->
-					<value></value>
-					<!-- Hander (plain, download, map or map_local)-->
-					<value>Plain</value>
-	            </list>
+                    <!-- Description -->
+                    <value></value>
+                    <!-- Hander (plain, download, map or map_local)-->
+                    <value>Plain</value>
+                </list>
 	            
-	            <list>
-	                 <!-- Bean -->
-	                <value>Query</value> 
-	                <!-- Format -->
-	                <value>HTML</value>   
-	                <!-- Label -->
-	                <value>Select all distinct objets that appear in the dataset.</value> 
-	                <!-- Statement -->
-	                <value><![CDATA[
+                <list>
+                    <!-- Bean -->
+                    <value>Query</value> 
+                    <!-- Format -->
+                    <value>HTML</value>   
+                    <!-- Label -->
+                    <value>Select all distinct objets that appear in the dataset.</value> 
+                    <!-- Statement -->
+                    <value><![CDATA[
 SELECT DISTINCT (?o AS ?object)
 WHERE { 
 	?s ?p ?o	
 }
 ]]></value>
-	                <!-- Description -->
-					<value></value>
-					<!-- Hander (plain, download, map or map_local)-->
-					<value>Plain</value>
-	            </list>
-	            <list>
-	                 <!-- Bean -->
-	                <value>Query</value> 
-	                <!-- Format -->
-	                <value>HTML</value>   
-	                <!-- Label -->
-	                <value>Find all distinct classes of the dataset.</value> 
-	                <!-- Statement -->
-	                <value><![CDATA[PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>	                
+                    <!-- Description -->
+                    <value></value>
+                    <!-- Hander (plain, download, map or map_local)-->
+                    <value>Plain</value>
+                </list>
+                <list>
+                    <!-- Bean -->
+                    <value>Query</value> 
+                    <!-- Format -->
+                    <value>HTML</value>   
+                    <!-- Label -->
+                    <value>Find all distinct classes of the dataset.</value> 
+                    <!-- Statement -->
+                    <value><![CDATA[PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>	                
 
 SELECT DISTINCT (?o AS ?class)
 WHERE { 
 	?s rdf:type ?o
 }
 ]]></value>
-	                <!-- Description -->
-					<value></value>
-					<!-- Hander (plain, download, map or map_local)-->
-					<value>Plain</value>
-	            </list>
+                    <!-- Description -->
+                    <value></value>
+                    <!-- Hander (plain, download, map or map_local)-->
+                    <value>Plain</value>
+                </list>
 	            
-	        	<list>
-	                 <!-- Bean -->
-	                <value>Query</value> 
-	                <!-- Format -->
-	                <value>HTML</value>   
-	                <!-- Label -->
-	                <value>Find the number of triples that appear in the dataset.</value> 
-	                <!-- Statement -->
-	                <value><![CDATA[SELECT (COUNT(?s) AS ?NumOfTriples)
+                <list>
+                    <!-- Bean -->
+                    <value>Query</value> 
+                    <!-- Format -->
+                    <value>HTML</value>   
+                    <!-- Label -->
+                    <value>Find the number of triples that appear in the dataset.</value> 
+                    <!-- Statement -->
+                    <value><![CDATA[SELECT (COUNT(?s) AS ?NumOfTriples)
 WHERE { 
 	?s ?p ?o
 }
 ]]></value>
-	                <!-- Description -->
-					<value></value>
-					<!-- Hander (plain, download, map or map_local)-->
-					<value>Plain</value>
-	            </list>
-	            <list>
-	                 <!-- Bean -->
-	                <value>Query</value> 
-	                <!-- Format -->
-	                <value>HTML</value>   
-	                <!-- Label -->
-	                <value>Present the first ten triples of the dataset.</value> 
-	                <!-- Statement -->
-	                <value><![CDATA[SELECT *
+                    <!-- Description -->
+                    <value></value>
+                    <!-- Hander (plain, download, map or map_local)-->
+                    <value>Plain</value>
+                </list>
+                <list>
+                    <!-- Bean -->
+                    <value>Query</value> 
+                    <!-- Format -->
+                    <value>HTML</value>   
+                    <!-- Label -->
+                    <value>Present the first ten triples of the dataset.</value> 
+                    <!-- Statement -->
+                    <value><![CDATA[SELECT *
 WHERE { 
 	?s ?p ?o
 }
 LIMIT 10
 ]]></value>
-	                <!-- Description -->
-					<value></value>
-					<!-- Hander (plain, download, map or map_local)-->
-					<value>Plain</value>
-	            </list>      
+                    <!-- Description -->
+                    <value></value>
+                    <!-- Hander (plain, download, map or map_local)-->
+                    <value>Plain</value>
+                </list>      
 
-				<list>
-             		<!-- Single valued elements correspond to headers -->
-					<value>Explore/Modify operations</value>
-	            </list>
-	            <list>
-             		<!-- Link to bean: two arguemnts -->
-					<value>Store</value>
-					<value>store.jsp</value>
-	            </list>
-	            <list>
-             		<!-- Link to bean: two arguemnts -->
-					<value>Query/Update</value>
-					<value>query.jsp</value>
-	            </list>
-	            <list>
-             		<!-- Link to bean: two arguemnts -->
-					<value>Describe</value>
-					<value>describe.jsp</value>
-	            </list>
-	            <list>
-             		<!-- Link to bean: two arguemnts -->
-					<value>Browse</value>
-					<value>browse.jsp</value>
-	            </list>
-				<list>
-					<!-- Link to bean: two arguemnts -->
-					<value>Configuration</value>
-					<value>connection.jsp</value>
-				</list>
+                <list>
+                    <!-- Single valued elements correspond to headers -->
+                    <value>Explore/Modify operations</value>
+                </list>
+                <list>
+                    <!-- Link to bean: two arguemnts -->
+                    <value>Store</value>
+                    <value>store.jsp</value>
+                </list>
+                <list>
+                    <!-- Link to bean: two arguemnts -->
+                    <value>Query/Update</value>
+                    <value>query.jsp</value>
+                </list>
+                <list>
+                    <!-- Link to bean: two arguemnts -->
+                    <value>Describe</value>
+                    <value>describe.jsp</value>
+                </list>
+                <list>
+                    <!-- Link to bean: two arguemnts -->
+                    <value>Browse</value>
+                    <value>browse.jsp</value>
+                </list>
+                <list>
+                    <!-- Link to bean: two arguemnts -->
+                    <value>Configuration</value>
+                    <value>connection.jsp</value>
+                </list>
             </list>
-         </constructor-arg>
+        </constructor-arg>          
     </bean>
 </beans>
