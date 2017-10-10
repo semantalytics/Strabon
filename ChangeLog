@@ -1,3 +1,10 @@
+Wed Oct 04 11:55:13 2017 +0300
+
+        * Bug #82 fixed : Added capability to Endpoint for the user to supply 
+          and store his unique Google Maps API Key. The context path of the 
+          endpoint is not restricted when a Key is provided. Users that do not 
+          supply a key can still run the application as before.
+
 Wed Mar 11 21:02:48 2015   Pyravlos Team
 	
 	* Bug #73, modified appendBuffer function to take the srid into
