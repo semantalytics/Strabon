@@ -72,7 +72,6 @@ public class stSPARQLQueryResultFormat extends TupleQueryResultFormat {
 	public static final stSPARQLQueryResultFormat HTML = new stSPARQLQueryResultFormat("HTML", 
 			Arrays.asList("text/html"), Charset.forName("UTF-8"), Arrays.asList("html", "htm"));
 	
-
 	/**
 	 * CHART format (so that results can be displayed using google charts)  
 	 */
