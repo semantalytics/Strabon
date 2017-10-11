@@ -168,9 +168,9 @@ public class QueryBean extends HttpServlet {
      */
 	private void processRequest(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		ServletOutputStream out = response.getOutputStream();
-		
+				
 		// get desired formats (we check only the Accept header)
-		List<stSPARQLQueryResultFormat> formats = parseMultiValuedAcceptHeader(request.getHeader("accept"));
+		List<TupleQueryResultFormat> formats = parseMultiValuedAcceptHeader(request.getHeader("accept"));
 		
 		// get the query and the limit
 		String query = request.getParameter("query");
@@ -186,8 +186,8 @@ public class QueryBean extends HttpServlet {
 			
 		} else {
 			// just use the first specified format
-			stSPARQLQueryResultFormat format = formats.get(0);
-		
+			TupleQueryResultFormat format = formats.get(0);
+					
 			// do not decode the SPARQL query (see bugs #65 and #49)
 			//query = URLDecoder.decode(request.getParameter("query"), "UTF-8");
 			query = request.getParameter("query");
@@ -196,6 +196,7 @@ public class QueryBean extends HttpServlet {
 	    	
 	    	try {
 				query = strabonWrapper.addLimit(query, maxLimit);
+				System.out.println(format.getName());
 				strabonWrapper.query(query, format.getName(), out);
 				response.setStatus(HttpServletResponse.SC_OK);
 				
@@ -236,6 +237,7 @@ public class QueryBean extends HttpServlet {
 			
 			String query = request.getParameter("query");
 			String format = request.getParameter("format");
+			System.out.println(format);
 			String handle = request.getParameter("handle");
 			String maxLimit = request.getParameter("maxLimit");
 			
@@ -401,8 +403,8 @@ public class QueryBean extends HttpServlet {
 	 * @param header
 	 * @return
 	 */
-	private List<stSPARQLQueryResultFormat> parseMultiValuedAcceptHeader(String header) {
-		List<stSPARQLQueryResultFormat> formats = new ArrayList<stSPARQLQueryResultFormat>();
+	private List<TupleQueryResultFormat> parseMultiValuedAcceptHeader(String header) {
+		List<TupleQueryResultFormat> formats = new ArrayList<TupleQueryResultFormat>();
 		
 		StringTokenizer token = new StringTokenizer(header, ", ");
 		
@@ -417,8 +419,9 @@ public class QueryBean extends HttpServlet {
 			}
 			
 			// get the stSPARQL Query Result format 
-	        stSPARQLQueryResultFormat format = stSPARQLQueryResultFormat.forMIMEType(value);
-	        
+			String valueFromMime = getValueFromMime(value); 
+			TupleQueryResultFormat format = stSPARQLQueryResultFormat.valueOf(valueFromMime);		
+				        
 	        // keep only the valid formats (non-null)
 	        if (format != null) {
 	        	formats.add(format);
@@ -426,6 +429,28 @@ public class QueryBean extends HttpServlet {
 		}
 
         return formats;
+	}
+	
+	private String getValueFromMime(String value) {
+		if (value.equalsIgnoreCase("application/sparql-results+json")) {
+			return "SPARQL/JSON";
+		}
+		else if (value.equalsIgnoreCase("application/json") || value.equalsIgnoreCase("application/geojson")) {
+			return "GeoJSON";
+		}
+		else if (value.equalsIgnoreCase("application/vnd.google-earth.kml+xml") || value.equalsIgnoreCase("application/kml")) {
+			return "KML";
+		}
+		else if (value.equalsIgnoreCase("text/tab-separated-values")) {
+			return "TSV";
+		}
+		else if (value.equalsIgnoreCase("text/html")) {
+			return "HTML";
+		}
+		else {
+			return "XML";
+		}
+		
 	}
 
 }
