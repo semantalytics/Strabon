@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import eu.earthobservatory.runtime.generaldb.InvalidDatasetFormatFault;
 import eu.earthobservatory.runtime.generaldb.Strabon;
 import eu.earthobservatory.utils.Format;
+import eu.earthobservatory.utils.StrabonDBEngine;
 
 public class StrabonBeanWrapper implements org.springframework.beans.factory.DisposableBean {
 
@@ -49,25 +50,17 @@ public class StrabonBeanWrapper implements org.springframework.beans.factory.Dis
     private int maxLimit;
     private boolean loadFromFile;
     private String prefixes;
-
     private Strabon strabon = null;
-
     private String gChartString = " ";
-
     private boolean checkForLockTable;
     private List<StrabonBeanWrapperConfiguration> entries;
+    private boolean strabonConnectionDetailsHaveBeenModified = false;
 
     public StrabonBeanWrapper(String databaseName, String user, String password,
             int port, String serverName, boolean checkForLockTable, String dbBackend,
             String googlemapskey, int maxLimit, boolean loadFromFile, String prefixes, List<List<String>> args) {
-        this.serverName = serverName;
-        this.port = port;
-        this.databaseName = databaseName;
-        this.user = user;
-        this.password = password;
+        setConnectionDetails(databaseName, user, password, String.valueOf(port), serverName, dbBackend, googlemapskey);
         this.checkForLockTable = checkForLockTable;
-        this.dbBackend = dbBackend;
-        this.googlemapskey = googlemapskey;
         this.maxLimit = maxLimit;
         this.loadFromFile = loadFromFile;
         this.prefixes = prefixes;
@@ -78,7 +71,6 @@ public class StrabonBeanWrapper implements org.springframework.beans.factory.Dis
         while (entryit.hasNext()) {
             List<String> list = entryit.next();
             Iterator<String> it = list.iterator();
-
             while (it.hasNext()) {
                 int items = 0;
                 //Header:label        
@@ -123,33 +115,37 @@ public class StrabonBeanWrapper implements org.springframework.beans.factory.Dis
                     StrabonBeanWrapperConfiguration entry = new StrabonBeanWrapperConfiguration(param3, param1, param4, param2, param5, param6);
                     this.entries.add(entry);
                 }
-
             }
         }
-
         init();
     }
 
     public boolean init() {
-        if (this.strabon == null) {
+        /* if the connection details have been modified
+        ** we should close the current Strabon (if any)
+        ** and create a new one
+         */
+        if (this.strabonConnectionDetailsHaveBeenModified) {
+            this.closeConnection();
             try {
                 logger.warn("[StrabonEndpoint] Strabon not initialized yet.");
                 logger.warn("[StrabonEndpoint] Initializing Strabon.");
                 //logger.info("[StrabonEndpoint] Connection details:\n" + this.getDetails());
 
                 // initialize Strabon according to user preference
-                if (Common.DBBACKEND_MONETDB.equalsIgnoreCase(dbBackend)) {
-                    this.strabon = new eu.earthobservatory.runtime.monetdb.Strabon(databaseName, user, password, port, serverName, checkForLockTable);
-
-                } else {
-                    // check whether the user typed wrong database backend and report
-                    if (!Common.DBBACKEND_POSTGIS.equalsIgnoreCase(dbBackend)) {
-                        logger.warn("[StrabonEndpoint] Unknown database backend \"" + dbBackend + "\". Assuming PostGIS.");
-                    }
-
-                    // use PostGIS as the default database backend
-                    this.strabon = new eu.earthobservatory.runtime.postgis.Strabon(databaseName, user, password, port, serverName, checkForLockTable);
+                switch (StrabonDBEngine.getStrabonDBEngine(dbBackend)) {
+                    case MonetDB : this.strabon = new eu.earthobservatory.runtime.monetdb.Strabon(databaseName, user, password, port, serverName, checkForLockTable);
+                                   break;
+                    case PostGIS : // use PostGIS as the default database backend
+                    default :
+                                    this.strabon = new eu.earthobservatory.runtime.postgis.Strabon(databaseName, user, password, port, serverName, checkForLockTable);
                 }
+
+                logger.info("[StrabonEndpoint] Created new connection with details:\n" + this.getDetails());
+                /* we should clear the <strabonConnectionDetailsHaveBeenModified> flag
+                ** since the connection to Strabon has been made
+                 */
+                this.strabonConnectionDetailsHaveBeenModified = false;
 
                 installSIGTERMHandler(this.strabon);
 
@@ -158,7 +154,6 @@ public class StrabonBeanWrapper implements org.springframework.beans.factory.Dis
                 return false;
             }
         }
-
         return true;
     }
 
@@ -199,6 +194,7 @@ public class StrabonBeanWrapper implements org.springframework.beans.factory.Dis
 
     public void closeConnection() {
         if (strabon != null) {
+            logger.info("[StrabonEndpoint] Closing existing connection with details:\n" + this.getDetails());
             strabon.close();
             strabon = null;
         }
@@ -379,17 +375,36 @@ public class StrabonBeanWrapper implements org.springframework.beans.factory.Dis
         return true;
     }
 
-    public void setConnectionDetails(String dbname, String username, String password, String port, String hostname, String dbengine, String googlemapskey) {
-        this.databaseName = dbname;
-        this.user = username;
-        this.password = password;
-        try {
-            this.port = Integer.valueOf(port);
-        } catch (NumberFormatException e) {
-            this.port = 5432;
+    public void setConnectionDetails(String databaseName, String user, String password, String port, String serverName, String dbBackend, String googlemapskey) {
+        /* validate-sanitize certain Strabon connection properties
+        ** dbBackend - must be one of the supported Db engines, or set it to PostGIS
+        ** port - must be an integer, or set it to dbBackend's default port
+         */
+        if (StrabonDBEngine.getStrabonDBEngine(dbBackend) == null) {
+            logger.warn("[StrabonEndpoint] Unknown database backend \"" + dbBackend + "\". Assuming PostGIS.");
+            dbBackend = StrabonDBEngine.PostGIS.getName();
         }
-        this.serverName = hostname;
-        this.dbBackend = dbengine;
+        try {
+            int tmp_port = Integer.parseInt(port);
+        } catch (NumberFormatException e) {
+            port = String.valueOf(StrabonDBEngine.getStrabonDBEngine(this.dbBackend).getDefaultPort());
+        }
+
+        /* set the <strabonConnectionDetailsHaveBeenModified> flag if
+        ** any of the Strabon connection properties have changed
+         */
+        this.strabonConnectionDetailsHaveBeenModified = !(dbBackend.equalsIgnoreCase(this.dbBackend)
+                && serverName.equalsIgnoreCase(this.serverName)
+                && port.equalsIgnoreCase(String.valueOf(this.port))
+                && databaseName.equals(this.databaseName)
+                && user.equalsIgnoreCase(this.user)
+                && password.equals(this.password));
+        this.dbBackend = dbBackend;
+        this.serverName = serverName;
+        this.port = Integer.parseInt(port);
+        this.databaseName = databaseName;
+        this.user = user;
+        this.password = password;
         this.googlemapskey = googlemapskey;
         this.checkForLockTable = true;
     }
@@ -521,7 +536,6 @@ public class StrabonBeanWrapper implements org.springframework.beans.factory.Dis
         return googlemapskey;
     }
 
-    
     public String googleMapsAPIScriptSourceForJSP() {
         /* returns the correct script source string to use in JSP
            i.e. query.jsp
