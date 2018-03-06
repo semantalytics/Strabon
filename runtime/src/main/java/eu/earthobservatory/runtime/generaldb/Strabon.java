@@ -27,11 +27,13 @@ import org.openrdf.query.MalformedQueryException;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.QueryLanguage;
 import org.openrdf.query.TupleQuery;
+import org.openrdf.query.BooleanQuery;
 import org.openrdf.query.TupleQueryResult;
 import org.openrdf.query.TupleQueryResultHandlerException;
 import org.openrdf.query.Update;
 import org.openrdf.query.UpdateExecutionException;
 import org.openrdf.query.resultio.TupleQueryResultWriter;
+import org.openrdf.query.resultio.BooleanQueryResultWriter;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.sail.SailRepository;
 import org.openrdf.repository.sail.SailRepositoryConnection;
@@ -45,6 +47,8 @@ import org.slf4j.LoggerFactory;
 import eu.earthobservatory.utils.Format;
 import eu.earthobservatory.utils.RDFHandlerFactory;
 import eu.earthobservatory.utils.stSPARQLQueryResultToFormatAdapter;
+import org.openrdf.query.resultio.sparqlxml.SPARQLBooleanXMLWriter;
+import org.openrdf.query.resultio.text.BooleanTextWriter;
 
 public abstract class Strabon {
 
@@ -218,7 +222,7 @@ public abstract class Strabon {
 			
 		}
 		
-		return ret;	
+		return ret;
 	}
 
 	public Object query(String queryString, Format resultsFormat, SailRepositoryConnection con, OutputStream out)
@@ -235,62 +239,126 @@ public abstract class Strabon {
 		}
 		
 		TupleQuery tupleQuery = null;
+		BooleanQuery askQuery = null;
+		Boolean isAskQuery = false;
 		try {
 			tupleQuery = con.prepareTupleQuery(QueryLanguage.SPARQL, queryString);
-			
-		} catch (RepositoryException e) {
-			logger.error("[Strabon.query] Error in preparing tuple query.", e);
-			status = false;
+		} catch (Exception e1) {
+				try {
+					askQuery = con.prepareBooleanQuery(QueryLanguage.SPARQL, queryString);
+					isAskQuery = true;
+				} catch (Exception e2) {
+					logger.error("[Strabon.query] Error in preparing tuple or ask query.", e2);
+					status = false;
+				}
 		}
 		
 		if (logger.isDebugEnabled()) {
 			logger.debug("Serializing results ({})", resultsFormat.name());
 		}
-		
-		TupleQueryResult result = null;
-		switch (resultsFormat) {
-			case EXP:
-				long results = 0;
-				
-				long t1 = System.nanoTime();
-				result = tupleQuery.evaluate();
-				long t2 = System.nanoTime();
-				
-				while (result.hasNext()) {
-					results++;
-					result.next();
-				}
-				
-				long t3 = System.nanoTime();
+		if (!isAskQuery) {
+			TupleQueryResult result = null;
+			switch (resultsFormat) {
+				case EXP:
+					long results = 0;
+					
+					long t1 = System.nanoTime();
+					result = tupleQuery.evaluate();
+					long t2 = System.nanoTime();
+					
+					while (result.hasNext()) {
+						results++;
+						result.next();
+					}
+					
+					long t3 = System.nanoTime();
 
-				logger.info((t2-t1)+" + "+(t3-t2)+" = "+(t3-t1)+" | "+results);
-				return new long[]{t2-t1, t3-t2, t3-t1, results};
-//				break;
-			
-			case TUQU:
+					logger.info((t2-t1)+" + "+(t3-t2)+" = "+(t3-t1)+" | "+results);
+					return new long[]{t2-t1, t3-t2, t3-t1, results};
+	//				break;
 				
-				return tupleQuery;
-//				break;	
-			case PIECHART:
-				return tupleQuery.evaluate();
-				
-			case AREACHART:
-				return tupleQuery.evaluate();
+				case TUQU:
+					
+					return tupleQuery;
+	//				break;	
+				case PIECHART:
+					return tupleQuery.evaluate();
+					
+				case AREACHART:
+					return tupleQuery.evaluate();
 
-			case COLUMNCHART:
-				return tupleQuery.evaluate();
-				
-			default:
-				// get the writer for the specified format
-				TupleQueryResultWriter resultWriter = stSPARQLQueryResultToFormatAdapter.createstSPARQLQueryResultWriter(resultsFormat, out);
-				
-				// check for null format
-				if (resultWriter == null) {
-					logger.error("[Strabon.query] Invalid format.");
-					return false;
+				case COLUMNCHART:
+					return tupleQuery.evaluate();
+					
+				default:
+					// get the writer for the specified format
+					TupleQueryResultWriter resultWriter = stSPARQLQueryResultToFormatAdapter.createstSPARQLQueryResultWriter(resultsFormat, out);
+					
+					// check for null format
+					if (resultWriter == null) {
+						logger.error("[Strabon.query] Invalid format.");
+						return false;
+					}
+					
+					tupleQuery.evaluate(resultWriter);
+			}
+		} else {
+				Boolean result = false;
+				switch (resultsFormat) {
+					case EXP:
+						long results = 0;
+						long t1 = System.nanoTime();
+						result = askQuery.evaluate();
+						long t2 = System.nanoTime();
+						long t3 = System.nanoTime();
+
+						logger.info((t2-t1)+" + "+(t3-t2)+" = "+(t3-t1)+" | "+"1");
+						return new long[]{t2-t1, t3-t2, t3-t1, results};
+					case TUQU:
+						return askQuery;
+					case PIECHART:
+						return askQuery.evaluate();
+
+					case AREACHART:
+						return askQuery.evaluate();
+
+					case COLUMNCHART:
+						return askQuery.evaluate();
+
+					default:
+						result = askQuery.evaluate();
+						BooleanQueryResultWriter writer = null;
+						String output = null;
+						switch(resultsFormat) {
+							case SESAME_JSON:
+								output = "{\n \"head\": {},\n \"boolean\":" + String.valueOf(result) + "\n}";
+								out.write(output.getBytes());
+								break;
+							case XML:
+							case SESAME_XML:
+								writer = new SPARQLBooleanXMLWriter(out);
+								writer.write(result);
+								break;
+							case TSV:
+							case DEFAULT:
+							case SESAME_CSV:
+							case SESAME_TSV:
+								output = "\"bool\"\n" + (result ? "1" : "0") + "\n";
+								out.write(output.getBytes());
+								break;
+							case HTML:
+								writer = new BooleanTextWriter(out);
+								writer.write(result);
+								break;
+							case SESAME_BINARY:
+								output = (result ? "1" : "0");
+								out.write(output.getBytes());
+								break;
+							default:
+								logger.error("[Strabon.query] Invalid format.");
+								return false;
+						}
 				}
-				
-				tupleQuery.evaluate(resultWriter);
 		}
 
 		return status;
