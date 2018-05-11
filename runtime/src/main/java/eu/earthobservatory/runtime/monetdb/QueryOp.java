@@ -11,6 +11,11 @@ package eu.earthobservatory.runtime.monetdb;
 
 import eu.earthobservatory.utils.Format;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+
 import org.openrdf.query.MalformedQueryException;
 import org.openrdf.sail.generaldb.exceptions.UnsupportedExtensionFunctionException;
 import org.slf4j.Logger;
@@ -36,6 +41,7 @@ public class QueryOp {
 			System.err.println("             <QUERY>      is the stSPARQL query to evaluate.");
 			System.err.println("             <DELET_LOCK> is true when deletion of \"locked\" table should be enforced (e.g., when Strabon has been ungracefully shutdown).");
 			System.err.println("             [<FORMAT>]   is the format of your results (XML)");
+			System.err.println("             [<OUTPUT FILE>]   is the path of the file to store the results (default: Sustem output) (should be preceeded by the format argument)");
 			System.exit(0);
 		}
 
@@ -47,14 +53,23 @@ public class QueryOp {
 		String queryString = args[5];
 		boolean forceDelete = Boolean.valueOf(args[6]);
 		String resultsFormat = "";
+		OutputStream os = System.out;
 		if ( args.length == 8 ) {
 			resultsFormat = args[7];
+		}else if (args.length == 9){
+			resultsFormat = args[7];
+			try {
+				os = new FileOutputStream(new File(args[8]));
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
-
 		Strabon strabon = null;
+		
 		try {
 			strabon = new Strabon(db, user, passwd, port, host, forceDelete);
-			strabon.query(queryString, Format.fromString(resultsFormat), strabon.getSailRepoConnection(), System.out);
+			strabon.query(queryString, Format.fromString(resultsFormat), strabon.getSailRepoConnection(), os);
 			
 		} catch (UnsupportedExtensionFunctionException e) {
 			logger.error("[Strabon.QueryOp] {}", e.getMessage());
