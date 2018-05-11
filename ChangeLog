@@ -1,6 +1,7 @@
 Tue Mar 06 13:45:29 2018 +0200
 
   * Added support for posing ASK queries.
+  * Added option to store results in file using QueryOp
 
 Wed Oct 04 11:55:13 2017 +0300
 
