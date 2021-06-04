@@ -28,7 +28,7 @@
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
 			<!-- version was put in purpose! do not remove it; -->
-			<version>4.2</version>
+			<version>4.5.13</version>
 		</dependency>
 
 		<!-- Testing: JUnit -->
